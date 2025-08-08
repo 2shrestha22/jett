@@ -1,5 +1,5 @@
-import 'package:anysend/receive.dart';
-import 'package:anysend/send.dart';
+import 'package:anysend/screen/receive_screen.dart';
+import 'package:anysend/screen/send_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {

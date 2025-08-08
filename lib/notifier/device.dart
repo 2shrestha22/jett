@@ -2,30 +2,8 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:anysend/discovery/konst.dart';
-import 'package:equatable/equatable.dart';
+import 'package:anysend/model/device.dart';
 import 'package:flutter/widgets.dart';
-
-class Device extends Equatable {
-  final String ipAddress;
-  final int port;
-  final String name;
-  final DateTime lastSeen;
-
-  const Device({
-    required this.ipAddress,
-    required this.port,
-    required this.name,
-    required this.lastSeen,
-  });
-
-  @override
-  String toString() {
-    return 'Device(ipAddress: $ipAddress, port: $port, name: $name)';
-  }
-
-  @override
-  List<Object> get props => [ipAddress];
-}
 
 class ReceiversNotifier extends ChangeNotifier {
   final Set<Device> _activeDevices = {};

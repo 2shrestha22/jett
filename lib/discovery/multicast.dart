@@ -6,6 +6,8 @@ import 'package:anysend/discovery/message.dart';
 
 import 'konst.dart';
 
+typedef OnMessageCallback = void Function(Message message);
+
 class Receiver {
   final multicastAddress = InternetAddress(kAddress);
   RawDatagramSocket? socket;
@@ -31,8 +33,6 @@ class Receiver {
     socket?.close();
   }
 }
-
-typedef OnMessageCallback = void Function(Message message);
 
 class Sender {
   final multicastAddress = InternetAddress(kAddress);

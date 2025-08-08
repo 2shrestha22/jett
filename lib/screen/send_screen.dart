@@ -1,4 +1,5 @@
-import 'package:anysend/device.dart';
+import 'package:anysend/model/device.dart';
+import 'package:anysend/notifier/device.dart';
 import 'package:anysend/discovery/multicast.dart';
 import 'package:flutter/material.dart';
 
