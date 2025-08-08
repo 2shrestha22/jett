@@ -1,6 +1,11 @@
+import 'dart:io';
+
+import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/device.dart';
 import 'package:anysend/notifier/device.dart';
 import 'package:anysend/discovery/multicast.dart';
+import 'package:anysend/transfer/client.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 class SendScreen extends StatefulWidget {
@@ -46,8 +51,25 @@ class _SendScreenState extends State<SendScreen> {
           children: [
             ListenableBuilder(
               listenable: notifier,
-              builder: (context, child) =>
-                  ActiveDevices(devices: notifier.devices),
+              builder: (context, child) {
+                return ActiveDevices(
+                  devices: notifier.devices,
+                  onTap: (device) {
+                    FilePicker.platform
+                        .pickFiles(allowMultiple: true, type: FileType.any)
+                        .then((result) {
+                          if (result != null && result.files.isNotEmpty) {
+                            final files = result.files
+                                .map((file) => File(file.path!))
+                                .toList();
+                            Client().upload(files, device.ipAddress, kTcpPort);
+                          } else {
+                            print('No files selected');
+                          }
+                        });
+                  },
+                );
+              },
             ),
             TextButton(
               onPressed: () {
@@ -76,9 +98,11 @@ class _SendScreenState extends State<SendScreen> {
 }
 
 class ActiveDevices extends StatelessWidget {
-  const ActiveDevices({super.key, required this.devices});
+  const ActiveDevices({super.key, required this.devices, required this.onTap});
 
+  final void Function(Device device) onTap;
   final List<Device> devices;
+
   @override
   Widget build(BuildContext context) {
     if (devices.isEmpty) {
@@ -90,6 +114,7 @@ class ActiveDevices extends StatelessWidget {
         return ListTile(
           title: Text(device.name),
           subtitle: Text('${device.ipAddress}:${device.port}'),
+          onTap: () => onTap(device),
         );
       }).toList(),
     );

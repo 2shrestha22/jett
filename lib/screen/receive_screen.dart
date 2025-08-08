@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:anysend/discovery/multicast.dart';
+import 'package:anysend/transfer/server.dart';
 import 'package:flutter/material.dart';
 
 class ReceiveScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class ReceiveScreen extends StatefulWidget {
 
 class _ReceiveScreenState extends State<ReceiveScreen> {
   final receiver = Receiver();
+  final _server = Server();
 
   @override
   void initState() {
@@ -21,6 +23,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   Future<void> _initReceiver() async {
     await receiver.init();
+    await _server.start();
     await receiver.announcePresense();
   }
 
