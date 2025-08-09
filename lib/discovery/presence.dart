@@ -11,47 +11,55 @@ typedef OnMessageCallback =
     void Function(Message message, String ipAddress, int port);
 
 class PresenceBroadcaster {
-  final multicastAddress = InternetAddress(kAddress);
-  RawDatagramSocket? socket;
+  final _multicastAddress = InternetAddress(kAddress);
+
+  RawDatagramSocket? _socket;
   Timer? _timer;
 
   Future<void> init() async {
-    socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-    socket?.joinMulticast(multicastAddress);
+    _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    _socket?.joinMulticast(_multicastAddress);
   }
 
-  Future<void> announcePresense() async {
+  Future<void> startPresenceAnnounce() async {
     final message = Message(name: DeviceInfoHelper.deviceName);
     final data = message.toJson().codeUnits;
 
     _timer = Timer.periodic(pingInterval, (timer) async {
-      socket?.send(data, multicastAddress, kUdpPort);
-      log('Sent Presense: $message to ${multicastAddress.address}:$kUdpPort');
+      _socket?.send(data, _multicastAddress, kUdpPort);
+      log('Sent Presense: $message to ${_multicastAddress.address}:$kUdpPort');
     });
+  }
+
+  Future<void> stopPresenceAnnounce() async {
+    _timer?.cancel();
+    _timer = null;
   }
 
   void close() {
     _timer?.cancel();
-    socket?.close();
+    _timer = null;
+    _socket?.close();
+    _socket = null;
   }
 }
 
 class PresenceListener {
-  final multicastAddress = InternetAddress(kAddress);
-  RawDatagramSocket? socket;
+  final _multicastAddress = InternetAddress(kAddress);
+
+  RawDatagramSocket? _socket;
 
   Future<void> listenMessage(OnMessageCallback onMessage) async {
-    socket = await RawDatagramSocket.bind(
+    _socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       kUdpPort,
       reuseAddress: true,
     );
-    socket?.joinMulticast(multicastAddress);
-    log('Listening on multicast ${multicastAddress.address}:$kUdpPort');
+    _socket?.joinMulticast(_multicastAddress);
 
-    socket?.listen((event) {
+    _socket?.listen((event) {
       if (event == RawSocketEvent.read) {
-        final datagram = socket?.receive();
+        final datagram = _socket?.receive();
         if (datagram != null) {
           final message = Message.fromJson(String.fromCharCodes(datagram.data));
           onMessage(message, datagram.address.address, datagram.port);
@@ -61,7 +69,7 @@ class PresenceListener {
   }
 
   void close() {
-    socket?.close();
-    log('Multicast listener socket closed');
+    _socket?.close();
+    _socket = null;
   }
 }

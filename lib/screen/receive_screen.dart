@@ -13,18 +13,27 @@ class ReceiveScreen extends StatefulWidget {
 
 class _ReceiveScreenState extends State<ReceiveScreen> {
   final _receiver = PresenceBroadcaster();
-  final _server = Server();
+  late final Server _server;
 
   @override
   void initState() {
     super.initState();
+    _server = Server(
+      onStart: () async {
+        await _receiver.stopPresenceAnnounce();
+      },
+      onComplete: () {
+        _receiver.startPresenceAnnounce();
+      },
+    );
+
     _initReceiver();
   }
 
   Future<void> _initReceiver() async {
     await _receiver.init();
     await _server.start();
-    await _receiver.announcePresense();
+    await _receiver.startPresenceAnnounce();
   }
 
   @override
@@ -38,7 +47,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
             Icon(Icons.download, size: 50),
 
             StreamBuilder(
-              stream: _server.progressStream,
+              stream: _server.transferMetadata,
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   final progress =
