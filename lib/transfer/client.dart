@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:ui';
 
+import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/transfer_metadata.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/subjects.dart';
 
@@ -13,18 +16,27 @@ class Client {
   final _metadataSubject = BehaviorSubject<TransferMetadata>();
   Stream<TransferMetadata> get transferMetadata => _metadataSubject.stream;
 
-  void upload(List<File> files, String ipAddress, int port) async {
-    int byteCount = 0;
-    final totalSize = await getFilesSize(files);
+  final VoidCallback? onStart;
+  final VoidCallback? onComplete;
 
-    final uri = Uri.parse('http://$ipAddress:$port/upload');
+  Client({this.onStart, this.onComplete});
+
+  void upload(List<PlatformFile> files, String ipAddress) async {
+    int byteCount = 0;
+    // final totalSize = await getFilesSize(files);
+    final totalSize = files.fold(
+      0,
+      (previousValue, element) => previousValue + element.size,
+    );
+
+    final uri = Uri.parse('http://$ipAddress:$kTcpPort/upload');
     final httpClientRequest = await _httpClient.postUrl(uri);
 
     final requestMultipart = http.MultipartRequest('POST', uri);
 
     for (var file in files) {
       requestMultipart.files.add(
-        await http.MultipartFile.fromPath('files', file.path),
+        await http.MultipartFile.fromPath('files', file.path!),
       );
     }
 
@@ -59,12 +71,13 @@ class Client {
         },
       ),
     );
-
+    onStart?.call();
     await httpClientRequest.addStream(streamUpload);
 
     final httpResponse = await httpClientRequest.close();
 
     if (httpResponse.statusCode == 200) {
+      onComplete?.call();
       return readResponseAsString(httpResponse).then((response) {
         log('Upload complete: $response');
       });

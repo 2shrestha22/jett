@@ -46,6 +46,8 @@ dependencies:
   package_info_plus: ^8.3.0
   dart_mappable: ^4.6.0
   device_info_plus: ^11.5.0
+  flutter_animate: ^4.5.2
+  lucide_icons_flutter: ^3.0.8
 
 dev_dependencies:
   flutter_test:
