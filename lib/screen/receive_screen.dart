@@ -41,8 +41,16 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               stream: _server.progressStream,
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
-                  return Text(
-                    'Progress: ${snapshot.data!.toStringAsFixed(2)}%',
+                  final progress =
+                      snapshot.data!.transferredBytes /
+                      snapshot.data!.totalSize *
+                      100;
+                  final fileName = snapshot.data!.fileName;
+                  return Column(
+                    children: [
+                      Text('Progress: ${progress.toStringAsFixed(2)}%'),
+                      Text('Receiving: $fileName'),
+                    ],
                   );
                 } else {
                   return const Text('Waiting for files...');

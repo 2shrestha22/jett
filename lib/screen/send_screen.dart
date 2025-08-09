@@ -27,12 +27,12 @@ class _SendScreenState extends State<SendScreen> {
   }
 
   Future<void> _initSender() async {
-    await sender.listenMessage((message) {
+    await sender.listenMessage((message, ipAddress, port) {
       setState(() {
         notifier.add(
           Device(
-            ipAddress: message.ipAddress,
-            port: message.port,
+            ipAddress: ipAddress,
+            port: port,
             name: message.name,
             lastSeen: DateTime.now(),
           ),

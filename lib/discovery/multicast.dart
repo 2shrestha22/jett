@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:anysend/discovery/message.dart';
+import 'package:anysend/model/message.dart';
+import 'package:anysend/utils/device_info.dart';
 
 import 'konst.dart';
 
-typedef OnMessageCallback = void Function(Message message);
+typedef OnMessageCallback =
+    void Function(Message message, String ipAddress, int port);
 
 class Receiver {
   final multicastAddress = InternetAddress(kAddress);
@@ -19,8 +21,8 @@ class Receiver {
   }
 
   Future<void> announcePresense() async {
-    final message = 'iPhone 14 Pro Max'; // Example device name
-    final data = message.codeUnits;
+    final message = Message(name: DeviceInfoHelper.deviceName);
+    final data = message.toJson().codeUnits;
 
     _timer = Timer.periodic(pingInterval, (timer) async {
       socket?.send(data, multicastAddress, kUdpPort);
@@ -51,14 +53,8 @@ class Sender {
       if (event == RawSocketEvent.read) {
         final datagram = socket?.receive();
         if (datagram != null) {
-          final data = String.fromCharCodes(datagram.data);
-
-          final message = Message(
-            ipAddress: datagram.address.address,
-            port: datagram.port,
-            name: data,
-          );
-          onMessage(message);
+          final message = Message.fromJson(String.fromCharCodes(datagram.data));
+          onMessage(message, datagram.address.address, datagram.port);
         }
       }
     });

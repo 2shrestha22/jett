@@ -1,7 +1,7 @@
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:anysend/discovery/konst.dart';
+import 'package:anysend/model/transfer_metadata.dart';
 import 'package:anysend/utils/save_path.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:shelf/shelf.dart';
@@ -22,19 +22,13 @@ class Server {
   late String _downloadPath;
   HttpServer? _server;
 
-  final _progressSubject = BehaviorSubject<double>();
-  Stream<double> get progressStream => _progressSubject.stream;
+  final _progressSubject = BehaviorSubject<TransferMetadata>();
+  Stream<TransferMetadata> get progressStream => _progressSubject.stream;
 
   Future<void> start() async {
     router.post('/upload', _handleUpload);
     _downloadPath = await getSavePath();
-
-    final file = File(path.join(_downloadPath, 'test.txt'));
-    await file.writeAsString('anysend');
-    final content = await file.readAsLines();
-
-    log('Content of test.txt: $content');
-
+    await File(path.join(_downloadPath, '.test')).writeAsString('');
     _server = await io.serve(router.call, '0.0.0.0', kTcpPort);
   }
 
@@ -48,19 +42,22 @@ class Server {
     }
 
     if (request.formData() case var form?) {
+      int bytesWritten = 0;
       await for (final data in form.formData) {
         if (data.name == 'files') {
-          final destinationFile = File(
-            '$_downloadPath/${data.filename ?? 'file'}',
-          );
+          final fileName = data.filename ?? 'file';
+          final destinationFile = File('$_downloadPath/$fileName');
           final sink = destinationFile.openWrite();
-          int totalBytes = 0;
           await for (final chunk in data.part) {
-            totalBytes += chunk.length;
+            bytesWritten += chunk.length;
             sink.add(chunk);
-            // Here you can log or send progress updates
-            final percentage = (totalBytes / totalFileSize) * 100;
-            _progressSubject.add(percentage);
+            _progressSubject.add(
+              TransferMetadata(
+                fileName: fileName,
+                totalSize: totalFileSize,
+                transferredBytes: bytesWritten,
+              ),
+            );
           }
           await sink.flush();
           await sink.close();
