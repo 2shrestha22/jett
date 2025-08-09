@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:anysend/discovery/multicast.dart';
+import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/transfer/server.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +12,7 @@ class ReceiveScreen extends StatefulWidget {
 }
 
 class _ReceiveScreenState extends State<ReceiveScreen> {
-  final _receiver = Receiver();
+  final _receiver = PresenceBroadcaster();
   final _server = Server();
 
   @override

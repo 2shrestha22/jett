@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/device.dart';
 import 'package:anysend/notifier/device.dart';
-import 'package:anysend/discovery/multicast.dart';
+import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,7 @@ class SendScreen extends StatefulWidget {
 }
 
 class _SendScreenState extends State<SendScreen> {
-  final sender = Sender();
+  final sender = PresenceListener();
 
   final notifier = ReceiversNotifier();
 

@@ -10,7 +10,7 @@ import 'konst.dart';
 typedef OnMessageCallback =
     void Function(Message message, String ipAddress, int port);
 
-class Receiver {
+class PresenceBroadcaster {
   final multicastAddress = InternetAddress(kAddress);
   RawDatagramSocket? socket;
   Timer? _timer;
@@ -36,7 +36,7 @@ class Receiver {
   }
 }
 
-class Sender {
+class PresenceListener {
   final multicastAddress = InternetAddress(kAddress);
   RawDatagramSocket? socket;
 
