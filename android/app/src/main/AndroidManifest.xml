@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<permission android:name="android.permission.INTERNET"/>
+<permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <application
         android:label="anysend"
         android:name="${applicationName}"

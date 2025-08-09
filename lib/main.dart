@@ -1,8 +1,11 @@
 import 'package:anysend/screen/receive_screen.dart';
 import 'package:anysend/screen/send_screen.dart';
+import 'package:anysend/utils/package_info.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PackageInfoHelper.init();
   runApp(const MyApp());
 }
 

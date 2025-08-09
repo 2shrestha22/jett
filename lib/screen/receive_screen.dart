@@ -12,7 +12,7 @@ class ReceiveScreen extends StatefulWidget {
 }
 
 class _ReceiveScreenState extends State<ReceiveScreen> {
-  final receiver = Receiver();
+  final _receiver = Receiver();
   final _server = Server();
 
   @override
@@ -22,9 +22,9 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   }
 
   Future<void> _initReceiver() async {
-    await receiver.init();
+    await _receiver.init();
     await _server.start();
-    await receiver.announcePresense();
+    await _receiver.announcePresense();
   }
 
   @override
@@ -34,7 +34,22 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [Icon(Icons.download, size: 50), Text('Waiting...')],
+          children: [
+            Icon(Icons.download, size: 50),
+
+            StreamBuilder(
+              stream: _server.progressStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return Text(
+                    'Progress: ${snapshot.data!.toStringAsFixed(2)}%',
+                  );
+                } else {
+                  return const Text('Waiting for files...');
+                }
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -42,7 +57,8 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   @override
   void dispose() {
-    receiver.close();
+    _receiver.close();
+    _server.close();
     super.dispose();
   }
 }
