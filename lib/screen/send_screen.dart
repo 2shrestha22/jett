@@ -5,6 +5,7 @@ import 'package:anysend/screen/widgets/online_receivers.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/utils/data.dart';
+import 'package:anysend/widgets/custom_button.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
@@ -78,36 +79,6 @@ class _SendScreenState extends State<SendScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Send Screen')),
-      floatingActionButton: transfering
-          ? null
-          : FloatingActionButton(
-              onPressed: () async {
-                if (files.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Pick files to send!")),
-                  );
-                  return;
-                }
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  clipBehavior: Clip.hardEdge,
-                  builder: (context) {
-                    return ListenableBuilder(
-                      listenable: notifier,
-                      builder: (context, child) => OnlineRecivers(
-                        devices: notifier.devices,
-                        onTap: (device) {
-                          Navigator.pop(context);
-                          client.upload(files, device.ipAddress);
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(LucideIcons.send),
-            ),
       body: SafeArea(
         child: Column(
           children: [
@@ -167,6 +138,39 @@ class _SendScreenState extends State<SendScreen> {
                   }
                   return SizedBox.shrink();
                 },
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: CustomButton(
+                  onPressed: () async {
+                    if (files.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Pick files to send!")),
+                      );
+                      return;
+                    }
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      clipBehavior: Clip.hardEdge,
+                      builder: (context) {
+                        return ListenableBuilder(
+                          listenable: notifier,
+                          builder: (context, child) => OnlineRecivers(
+                            devices: notifier.devices,
+                            onTap: (device) {
+                              Navigator.pop(context);
+                              client.upload(files, device.ipAddress);
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  icon: const Icon(LucideIcons.send),
+                  label: Text('Send'),
+                ),
               ),
           ],
         ),
