@@ -2,13 +2,20 @@ import 'dart:io';
 
 import 'package:anysend/utils/data.dart' show formatFileSize;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
 class FileInfoTile extends StatelessWidget {
   final String filePath;
   final int? fileSize;
+  final VoidCallback onRemoveTap;
 
-  const FileInfoTile({super.key, required this.filePath, this.fileSize});
+  const FileInfoTile({
+    super.key,
+    required this.filePath,
+    this.fileSize,
+    required this.onRemoveTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +34,7 @@ class FileInfoTile extends StatelessWidget {
             FileSizeWidget(filePath: filePath),
         ],
       ),
+      trailing: IconButton(onPressed: onRemoveTap, icon: Icon(LucideIcons.x)),
     );
   }
 }

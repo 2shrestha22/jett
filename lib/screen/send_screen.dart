@@ -127,6 +127,11 @@ class _SendScreenState extends State<SendScreen> {
                   return FileInfoTile(
                     filePath: file.path!,
                     fileSize: file.size,
+                    onRemoveTap: () {
+                      setState(() {
+                        files.remove(file);
+                      });
+                    },
                   );
                 },
               ),
