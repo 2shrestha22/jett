@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:anysend/utils/file_size.dart' show formatFileSize;
+import 'package:anysend/utils/data.dart' show formatFileSize;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 import 'dart:ui';
 
@@ -17,7 +16,8 @@ class Client {
   Stream<TransferMetadata> get transferMetadata => _metadataSubject.stream;
 
   final VoidCallback? onStart;
-  final void Function(double speedMbps)? onComplete;
+  // Average Byte/s speed
+  final void Function(double avgSpeedBps)? onComplete;
 
   Client({this.onStart, this.onComplete});
 
@@ -52,7 +52,7 @@ class Client {
     final stopwatch = Stopwatch()..start();
     // Keep last chunks for rolling average
     final List<_ChunkData> recentChunks = [];
-    const rollingWindowMs = 2000; // 2 second window
+    const rollingWindowMs = 3000; // 3 second window
 
     Stream<List<int>> streamUpload = multipartRequestStream.transform(
       StreamTransformer.fromHandlers(
@@ -83,15 +83,14 @@ class Client {
           final elapsedRecentMs =
               (recentChunks.last.timestamp - recentChunks.first.timestamp)
                   .clamp(1, rollingWindowMs); // avoid divide-by-zero
-          final speedBps = totalBytesRecent / (elapsedRecentMs / 1000.0);
-          final speedMbps = (speedBps * 8) / (1024 * 1024);
+          final speedBps = totalBytesRecent / (elapsedRecentMs / 1000);
 
           _metadataSubject.add(
             TransferMetadata(
               fileName: '', //unable to get file name here
               totalSize: totalSize,
               transferredBytes: byteCount,
-              speedMbps: speedMbps,
+              speedBps: speedBps,
             ),
           );
         },
@@ -110,14 +109,11 @@ class Client {
     final httpResponse = await httpClientRequest.close();
 
     if (httpResponse.statusCode == 200) {
-      final elapsedSeconds = stopwatch.elapsedMilliseconds / 1000.0;
+      final elapsedSeconds = stopwatch.elapsedMilliseconds / 1000;
       final avgSpeedBps = byteCount / elapsedSeconds;
-      final avgSpeedMbps = (avgSpeedBps * 8) / (1024 * 1024);
-      onComplete?.call(avgSpeedMbps);
+      onComplete?.call(avgSpeedBps);
 
-      return readResponseAsString(httpResponse).then((response) {
-        log('Upload complete: $response');
-      });
+      await readResponseAsString(httpResponse);
     } else {
       throw Exception('Failed to upload files: ${httpResponse.statusCode}');
     }

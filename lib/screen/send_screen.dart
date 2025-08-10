@@ -1,10 +1,11 @@
 import 'package:anysend/model/device.dart';
 import 'package:anysend/notifier/receivers_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
+import 'package:anysend/screen/widgets/online_receivers.dart';
+import 'package:anysend/screen/widgets/picker_buttons.dart';
 import 'package:anysend/transfer/client.dart';
-import 'package:anysend/widgets/custom_button.dart';
+import 'package:anysend/utils/data.dart';
 import 'package:anysend/widgets/file_view.dart';
-import 'package:anysend/widgets/loader.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,6 @@ class _SendScreenState extends State<SendScreen> {
   final files = <PlatformFile>[];
   late final Client client;
 
-  bool pickingFiles = false;
   bool transfering = false;
 
   @override
@@ -45,9 +45,7 @@ class _SendScreenState extends State<SendScreen> {
           builder: (context) {
             return AlertDialog(
               title: Text('Completed!'),
-              content: Text(
-                'Speed: ${(speedMbps / 8).toStringAsFixed(2)} MB/s',
-              ),
+              content: Text(formatTransferRate(speedMbps)),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -97,47 +95,13 @@ class _SendScreenState extends State<SendScreen> {
                   builder: (context) {
                     return ListenableBuilder(
                       listenable: notifier,
-                      builder: (context, child) {
-                        return DraggableScrollableSheet(
-                          expand: false,
-                          builder: (context, scrollController) {
-                            final deviecs = notifier.devices;
-                            if (deviecs.isEmpty) {
-                              return const Center(
-                                child: Column(
-                                  spacing: 8,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('Searching for devices...'),
-                                    Loader(),
-                                  ],
-                                ),
-                              );
-                            }
-                            return ListenableBuilder(
-                              listenable: notifier,
-                              builder: (context, child) {
-                                return Column(
-                                  children: deviecs.map((device) {
-                                    return ListTile(
-                                      leading: Icon(
-                                        LucideIcons.monitorSmartphone,
-                                      ),
-                                      title: Text(device.name),
-                                      subtitle: Text(device.ipAddress),
-                                      onTap: () {
-                                        // Handle tap on device
-                                        Navigator.pop(context);
-                                        client.upload(files, device.ipAddress);
-                                      },
-                                    );
-                                  }).toList(),
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
+                      builder: (context, child) => OnlineRecivers(
+                        devices: notifier.devices,
+                        onTap: (device) {
+                          Navigator.pop(context);
+                          client.upload(files, device.ipAddress);
+                        },
+                      ),
                     );
                   },
                 );
@@ -148,26 +112,12 @@ class _SendScreenState extends State<SendScreen> {
         child: Column(
           children: [
             if (!transfering)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.all(8.0),
-                child: CustomButton(
-                  onPressed: () async {
-                    final result = await FilePicker.platform.pickFiles(
-                      allowMultiple: true,
-                      type: FileType.any,
-                      onFileLoading: _onFileLoadHandler,
-                    );
-                    if (result != null && result.files.isNotEmpty) {
-                      setState(() {
-                        files.addAll(result.files);
-                      });
-                    }
-                  },
-                  label: const Text('Pick Files'),
-                  icon: const Icon(LucideIcons.filePlus),
-                  isLoading: pickingFiles,
-                ),
+              PickerButtons(
+                onPick: (files) {
+                  setState(() {
+                    this.files.addAll(files);
+                  });
+                },
               ),
             Expanded(
               child: ListView.builder(
@@ -192,10 +142,10 @@ class _SendScreenState extends State<SendScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         TransferProgressIndicator(progress: progress),
-                        if (data.speedMbps != null)
+                        if (data.speedBps != null)
                           Center(
                             child: Text(
-                              '${(data.speedMbps! / 8).toStringAsFixed(0)} MB/s',
+                              formatTransferRate(data.speedBps!),
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -219,25 +169,30 @@ class _SendScreenState extends State<SendScreen> {
     );
   }
 
-  _onFileLoadHandler(status) {
-    switch (status) {
-      case FilePickerStatus.picking:
-        setState(() {
-          pickingFiles = true;
-        });
-        break;
-      case FilePickerStatus.done:
-        setState(() {
-          pickingFiles = false;
-        });
-        break;
-    }
-  }
-
   @override
   void dispose() {
     presenceListener.close();
     notifier.dispose();
     super.dispose();
   }
+
+  // showTransferDialog() {
+  //   showAdaptiveDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         title: Text('Sending'),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //             },
+  //             child: Text('Cancel'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 }
