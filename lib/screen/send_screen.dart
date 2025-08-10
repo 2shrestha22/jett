@@ -36,7 +36,7 @@ class _SendScreenState extends State<SendScreen> {
           transfering = true;
         });
       },
-      onComplete: () {
+      onComplete: (speedMbps) {
         setState(() {
           transfering = false;
         });
@@ -44,7 +44,10 @@ class _SendScreenState extends State<SendScreen> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              content: Text('Completed!'),
+              title: Text('Completed!'),
+              content: Text(
+                'Speed: ${(speedMbps / 8).toStringAsFixed(2)} MB/s',
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -189,6 +192,13 @@ class _SendScreenState extends State<SendScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         TransferProgressIndicator(progress: progress),
+                        if (data.speedMbps != null)
+                          Center(
+                            child: Text(
+                              '${(data.speedMbps! / 8).toStringAsFixed(0)} MB/s',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: TextButton.icon(

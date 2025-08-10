@@ -30,7 +30,7 @@ class Server {
     _router.post('/upload', _handleUpload);
     _downloadPath = await getSavePath();
     await File(path.join(_downloadPath, '.test')).writeAsString('');
-    _server = await io.serve(_router.call, '0.0.0.0', kTcpPort);
+    _server = await io.serve(_router.call, InternetAddress.anyIPv4, kTcpPort);
   }
 
   Future<Response> _handleUpload(Request request) async {

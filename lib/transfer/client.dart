@@ -17,7 +17,7 @@ class Client {
   Stream<TransferMetadata> get transferMetadata => _metadataSubject.stream;
 
   final VoidCallback? onStart;
-  final VoidCallback? onComplete;
+  final void Function(double speedMbps)? onComplete;
 
   Client({this.onStart, this.onComplete});
 
@@ -49,17 +49,49 @@ class Client {
       requestMultipart.headers[HttpHeaders.contentTypeHeader]!,
     );
 
+    final stopwatch = Stopwatch()..start();
+    // Keep last chunks for rolling average
+    final List<_ChunkData> recentChunks = [];
+    const rollingWindowMs = 2000; // 2 second window
+
     Stream<List<int>> streamUpload = multipartRequestStream.transform(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {
           sink.add(data);
-
           byteCount += data.length;
+
+          // Record chunk
+          recentChunks.add(
+            _ChunkData(
+              size: data.length,
+              timestamp: stopwatch.elapsedMilliseconds,
+            ),
+          );
+
+          // Remove old chunks outside rolling window
+          final cutoff = stopwatch.elapsedMilliseconds - rollingWindowMs;
+          while (recentChunks.isNotEmpty &&
+              recentChunks.first.timestamp < cutoff) {
+            recentChunks.removeAt(0);
+          }
+
+          // Calculate rolling average speed (bytes/sec)
+          final totalBytesRecent = recentChunks.fold<int>(
+            0,
+            (sum, chunk) => sum + chunk.size,
+          );
+          final elapsedRecentMs =
+              (recentChunks.last.timestamp - recentChunks.first.timestamp)
+                  .clamp(1, rollingWindowMs); // avoid divide-by-zero
+          final speedBps = totalBytesRecent / (elapsedRecentMs / 1000.0);
+          final speedMbps = (speedBps * 8) / (1024 * 1024);
+
           _metadataSubject.add(
             TransferMetadata(
               fileName: '', //unable to get file name here
               totalSize: totalSize,
               transferredBytes: byteCount,
+              speedMbps: speedMbps,
             ),
           );
         },
@@ -67,6 +99,7 @@ class Client {
           throw error;
         },
         handleDone: (sink) {
+          stopwatch.stop();
           sink.close();
         },
       ),
@@ -77,7 +110,11 @@ class Client {
     final httpResponse = await httpClientRequest.close();
 
     if (httpResponse.statusCode == 200) {
-      onComplete?.call();
+      final elapsedSeconds = stopwatch.elapsedMilliseconds / 1000.0;
+      final avgSpeedBps = byteCount / elapsedSeconds;
+      final avgSpeedMbps = (avgSpeedBps * 8) / (1024 * 1024);
+      onComplete?.call(avgSpeedMbps);
+
       return readResponseAsString(httpResponse).then((response) {
         log('Upload complete: $response');
       });
@@ -100,4 +137,10 @@ Future<int> getFilesSize(List<File> files) async {
   return files.fold(0, (total, file) async {
     return await total + await file.length();
   });
+}
+
+class _ChunkData {
+  final int size; // bytes
+  final int timestamp; // ms since upload start
+  _ChunkData({required this.size, required this.timestamp});
 }
