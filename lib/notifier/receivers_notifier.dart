@@ -14,19 +14,24 @@ class ReceiversNotifier extends ChangeNotifier {
       log('ActiveReceivers: Timer tick, removing last device if exists');
       if (_activeDevices.isEmpty) return;
 
+      bool mutated = false;
       _activeDevices.removeWhere((device) {
         final duration = DateTime.now().difference(device.lastSeen);
-        return duration > deviceTimeout;
+        mutated = duration > deviceTimeout;
+        return mutated;
       });
-      notifyListeners();
+      if (mutated) notifyListeners();
     });
   }
 
-  void add(Device device) {
+  void add(Device device, bool available) {
+    bool mutated = false;
     // update the last seen time
-    _activeDevices.removeWhere((d) => d == device);
-    _activeDevices.add(device);
-    notifyListeners();
+    mutated = _activeDevices.remove(device);
+    if (available) {
+      mutated |= _activeDevices.add(device);
+    }
+    if (mutated) notifyListeners();
   }
 
   bool get isEmpty => _activeDevices.isEmpty;

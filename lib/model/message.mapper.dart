@@ -23,12 +23,22 @@ class MessageMapper extends ClassMapperBase<Message> {
 
   static String _$name(Message v) => v.name;
   static const Field<Message, String> _f$name = Field('name', _$name);
+  static bool _$available(Message v) => v.available;
+  static const Field<Message, bool> _f$available = Field(
+    'available',
+    _$available,
+    opt: true,
+    def: true,
+  );
 
   @override
-  final MappableFields<Message> fields = const {#name: _f$name};
+  final MappableFields<Message> fields = const {
+    #name: _f$name,
+    #available: _f$available,
+  };
 
   static Message _instantiate(DecodingData data) {
-    return Message(name: data.dec(_f$name));
+    return Message(name: data.dec(_f$name), available: data.dec(_f$available));
   }
 
   @override
@@ -88,7 +98,7 @@ extension MessageValueCopy<$R, $Out> on ObjectCopyWith<$R, Message, $Out> {
 
 abstract class MessageCopyWith<$R, $In extends Message, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? name});
+  $R call({String? name, bool? available});
   MessageCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -101,11 +111,17 @@ class _MessageCopyWithImpl<$R, $Out>
   late final ClassMapperBase<Message> $mapper =
       MessageMapper.ensureInitialized();
   @override
-  $R call({String? name}) =>
-      $apply(FieldCopyWithData({if (name != null) #name: name}));
+  $R call({String? name, bool? available}) => $apply(
+    FieldCopyWithData({
+      if (name != null) #name: name,
+      if (available != null) #available: available,
+    }),
+  );
   @override
-  Message $make(CopyWithData data) =>
-      Message(name: data.get(#name, or: $value.name));
+  Message $make(CopyWithData data) => Message(
+    name: data.get(#name, or: $value.name),
+    available: data.get(#available, or: $value.available),
+  );
 
   @override
   MessageCopyWith<$R2, Message, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>

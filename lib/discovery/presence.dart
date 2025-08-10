@@ -12,6 +12,7 @@ typedef OnMessageCallback =
 
 class PresenceBroadcaster {
   final _multicastAddress = InternetAddress(kAddress);
+  final _baseMessage = Message(name: DeviceInfoHelper.deviceName);
 
   RawDatagramSocket? _socket;
   Timer? _timer;
@@ -22,25 +23,31 @@ class PresenceBroadcaster {
   }
 
   Future<void> startPresenceAnnounce() async {
-    final message = Message(name: DeviceInfoHelper.deviceName);
-    final data = message.toJson().codeUnits;
+    final data = _baseMessage.toJson().codeUnits;
     // announce as soon as this method is called
     _socket?.send(data, _multicastAddress, kUdpPort);
     // then in periodic time
     _timer = Timer.periodic(pingInterval, (timer) async {
       _socket?.send(data, _multicastAddress, kUdpPort);
-      log('Sent Presense: $message to ${_multicastAddress.address}:$kUdpPort');
+      log(
+        'Sent Presense: $_baseMessage to ${_multicastAddress.address}:$kUdpPort',
+      );
     });
   }
 
-  Future<void> stopPresenceAnnounce() async {
+  void stopPresenceAnnounce() {
+    // send unavilable before stopping announce
+    _socket?.send(
+      _baseMessage.copyWith(available: false).toJson().codeUnits,
+      _multicastAddress,
+      kUdpPort,
+    );
     _timer?.cancel();
     _timer = null;
   }
 
   void close() {
-    _timer?.cancel();
-    _timer = null;
+    stopPresenceAnnounce();
     _socket?.close();
     _socket = null;
   }

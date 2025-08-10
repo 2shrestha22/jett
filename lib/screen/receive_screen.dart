@@ -4,6 +4,7 @@ import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/transfer/server.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 class ReceiveScreen extends StatefulWidget {
   const ReceiveScreen({super.key});
@@ -26,7 +27,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         setState(() {
           transfering = true;
         });
-        await _receiver.stopPresenceAnnounce();
+        _receiver.stopPresenceAnnounce();
       },
       onComplete: () async {
         setState(() {
@@ -63,9 +64,8 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Receive')),
-      body: Center(
+    return FScaffold(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

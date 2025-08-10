@@ -48,6 +48,8 @@ dependencies:
   device_info_plus: ^11.5.0
   flutter_animate: ^4.5.2
   lucide_icons_flutter: ^3.0.8
+  forui: ^0.14.1
+  forui_assets: ^0.14.0
 
 dev_dependencies:
   flutter_test:

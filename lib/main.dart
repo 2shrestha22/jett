@@ -1,8 +1,10 @@
+import 'package:anysend/screen/home_screen.dart';
 import 'package:anysend/screen/receive_screen.dart';
 import 'package:anysend/screen/send_screen.dart';
 import 'package:anysend/utils/device_info.dart';
 import 'package:anysend/utils/package_info.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,44 +24,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      home: Builder(
-        builder: (context) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Flutter Demo Home Page')),
-            body: Center(
-              child: Row(
-                spacing: 16,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SendScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text('Send'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ReceiveScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text('Receive'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      title: 'AnySend',
+      color: Colors.black,
+      builder: (context, child) =>
+          FTheme(data: FThemes.zinc.light, child: child!),
+      home: HomeScreen(),
     );
   }
 }

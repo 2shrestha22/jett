@@ -10,6 +10,7 @@ import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SendScreen extends StatefulWidget {
@@ -77,9 +78,12 @@ class _SendScreenState extends State<SendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Send Screen')),
-      body: SafeArea(
+    return FScaffold(
+      header: FHeader.nested(
+        title: const Text('Send Screen'),
+        prefixes: [FHeaderAction.back(onPress: () {})],
+      ),
+      child: SafeArea(
         child: Column(
           children: [
             if (!transfering)
