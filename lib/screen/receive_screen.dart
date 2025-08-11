@@ -33,14 +33,15 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         setState(() {
           transfering = false;
         });
-        await showDialog(
+        await showFDialog(
           context: context,
-          builder: (context) {
-            return AlertDialog(
-              content: Text('Completed!'),
+          builder: (context, _, __) {
+            return FDialog.adaptive(
+              title: Text('Completed!'),
               actions: [
-                TextButton(
-                  onPressed: () {
+                FButton(
+                  style: FButtonStyle.primary(),
+                  onPress: () {
                     Navigator.pop(context);
                   },
                   child: Text('Ok'),
@@ -67,9 +68,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     return FScaffold(
       child: Center(
         child: Column(
+          spacing: 8,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.download, size: 50),
+            Icon(FIcons.download),
             if (transfering)
               StreamBuilder(
                 stream: _server.transferMetadata,
@@ -80,6 +82,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                         snapshot.data!.totalSize;
                     final fileName = snapshot.data!.fileName;
                     return Column(
+                      spacing: 8,
                       children: [
                         TransferProgressIndicator(progress: progress),
                         Text('Receiving: $fileName'),

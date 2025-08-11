@@ -1,6 +1,5 @@
+import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/screen/home_screen.dart';
-import 'package:anysend/screen/receive_screen.dart';
-import 'package:anysend/screen/send_screen.dart';
 import 'package:anysend/utils/device_info.dart';
 import 'package:anysend/utils/package_info.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +23,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AnySend',
+      title: appName,
       color: Colors.black,
       builder: (context, child) =>
           FTheme(data: FThemes.zinc.light, child: child!),

@@ -1,7 +1,6 @@
-import 'package:anysend/widgets/custom_button.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:forui/forui.dart';
 
 class PickerButtons extends StatefulWidget {
   const PickerButtons({super.key, required this.onPick});
@@ -17,24 +16,24 @@ class _PickerButtonsState extends State<PickerButtons> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(8.0),
-      child: CustomButton(
-        onPressed: () async {
-          final result = await FilePicker.platform.pickFiles(
-            allowMultiple: true,
-            type: FileType.any,
-            onFileLoading: _onFileLoadHandler,
-          );
-          if (result != null && result.files.isNotEmpty) {
-            widget.onPick(result.files);
-          }
-        },
-        label: const Text('Pick Files'),
-        icon: const Icon(LucideIcons.filePlus),
-        isLoading: pickingFiles,
-      ),
+    return FButton(
+      mainAxisSize: MainAxisSize.min,
+      style: FButtonStyle.outline(),
+      onPress: pickingFiles
+          ? null
+          : () async {
+              final result = await FilePicker.platform.pickFiles(
+                allowMultiple: true,
+                type: FileType.any,
+                onFileLoading: _onFileLoadHandler,
+              );
+              if (result != null && result.files.isNotEmpty) {
+                widget.onPick(result.files);
+              }
+            },
+
+      prefix: pickingFiles ? FProgress.circularIcon() : Icon(FIcons.filePlus),
+      child: Text('Select Files'),
     );
   }
 

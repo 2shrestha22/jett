@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:collection';
 
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/device.dart';
@@ -7,16 +7,20 @@ import 'package:flutter/widgets.dart';
 
 class ReceiversNotifier extends ChangeNotifier {
   final Set<Device> _activeDevices = {};
+  // <deviceIp, lastSeen>
+  final _lastSeenHashMap = HashMap<String, DateTime>();
+
   late Timer _timer;
 
   ReceiversNotifier() {
     _timer = Timer.periodic(cleanUpInterval, (timer) {
-      log('ActiveReceivers: Timer tick, removing last device if exists');
       if (_activeDevices.isEmpty) return;
 
       bool mutated = false;
       _activeDevices.removeWhere((device) {
-        final duration = DateTime.now().difference(device.lastSeen);
+        final duration = DateTime.now().difference(
+          _lastSeenHashMap[device.ipAddress]!,
+        );
         mutated = duration > deviceTimeout;
         return mutated;
       });
@@ -27,9 +31,12 @@ class ReceiversNotifier extends ChangeNotifier {
   void add(Device device, bool available) {
     bool mutated = false;
     // update the last seen time
-    mutated = _activeDevices.remove(device);
-    if (available) {
-      mutated |= _activeDevices.add(device);
+    if (!available) {
+      mutated = _activeDevices.remove(device);
+      _lastSeenHashMap.remove(device.ipAddress);
+    } else {
+      mutated = _activeDevices.add(device);
+      _lastSeenHashMap[device.ipAddress] = DateTime.now();
     }
     if (mutated) notifyListeners();
   }

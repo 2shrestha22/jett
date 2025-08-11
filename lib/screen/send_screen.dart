@@ -1,17 +1,14 @@
 import 'package:anysend/model/device.dart';
 import 'package:anysend/notifier/receivers_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
-import 'package:anysend/screen/widgets/online_receivers.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/utils/data.dart';
-import 'package:anysend/widgets/custom_button.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SendScreen extends StatefulWidget {
   const SendScreen({super.key});
@@ -38,19 +35,17 @@ class _SendScreenState extends State<SendScreen> {
           transfering = true;
         });
       },
-      onComplete: (speedMbps) {
-        setState(() {
-          transfering = false;
-        });
-        showDialog(
+      onComplete: (speedMbps) async {
+        await showFDialog(
           context: context,
-          builder: (context) {
-            return AlertDialog(
+          builder: (context, _, __) {
+            return FDialog.adaptive(
               title: Text('Completed!'),
-              content: Text(formatTransferRate(speedMbps)),
+              body: Text(formatTransferRate(speedMbps)),
               actions: [
-                TextButton(
-                  onPressed: () {
+                FButton(
+                  style: FButtonStyle.primary(),
+                  onPress: () {
                     Navigator.pop(context);
                   },
                   child: Text('Ok'),
@@ -59,6 +54,9 @@ class _SendScreenState extends State<SendScreen> {
             );
           },
         );
+        setState(() {
+          transfering = false;
+        });
       },
     );
   }
@@ -66,12 +64,8 @@ class _SendScreenState extends State<SendScreen> {
   Future<void> _initListener() async {
     await presenceListener.listenMessage((message, ipAddress, port) {
       notifier.add(
-        Device(
-          ipAddress: ipAddress,
-          port: port,
-          name: message.name,
-          lastSeen: DateTime.now(),
-        ),
+        Device(ipAddress: ipAddress, port: port, name: message.name),
+        message.available,
       );
     });
   }
@@ -79,46 +73,54 @@ class _SendScreenState extends State<SendScreen> {
   @override
   Widget build(BuildContext context) {
     return FScaffold(
-      header: FHeader.nested(
-        title: const Text('Send Screen'),
-        prefixes: [FHeaderAction.back(onPress: () {})],
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            if (!transfering)
-              PickerButtons(
-                onPick: (files) {
-                  setState(() {
-                    this.files.addAll(files);
-                  });
-                },
+      child: Column(
+        children: [
+          if (files.isEmpty)
+            Expanded(
+              child: Center(
+                child: PickerButtons(
+                  onPick: (files) {
+                    setState(() {
+                      this.files.addAll(files);
+                    });
+                  },
+                ),
               ),
+            )
+          else
             Expanded(
               child: ListView.builder(
                 itemCount: files.length,
                 itemBuilder: (context, index) {
                   final file = files[index];
-                  return FileInfoTile(
-                    filePath: file.path!,
-                    fileSize: file.size,
-                    onRemoveTap: () {
-                      setState(() {
-                        files.remove(file);
-                      });
-                    },
+                  return Padding(
+                    padding: index == 0
+                        ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
+                        : EdgeInsetsGeometry.only(bottom: 8),
+                    child: FileInfoTile(
+                      filePath: file.path!,
+                      fileSize: file.size,
+                      onRemoveTap: () {
+                        setState(() {
+                          files.remove(file);
+                        });
+                      },
+                    ),
                   );
                 },
               ),
             ),
-            if (transfering)
-              StreamBuilder(
+          if (transfering)
+            SizedBox(
+              height: 100,
+              child: StreamBuilder(
                 stream: client.transferMetadata,
                 builder: (context, asyncSnapshot) {
                   final data = asyncSnapshot.data;
                   if (data != null) {
                     final progress = data.transferredBytes / data.totalSize;
                     return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         TransferProgressIndicator(progress: progress),
@@ -129,55 +131,50 @@ class _SendScreenState extends State<SendScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextButton.icon(
-                            label: Text('Cancel'),
-                            icon: Icon(LucideIcons.x),
-                            onPressed: () {},
-                          ),
-                        ),
                       ],
                     );
                   }
                   return SizedBox.shrink();
                 },
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: CustomButton(
-                  onPressed: () async {
-                    if (files.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Pick files to send!")),
+              ),
+            )
+          else
+            SizedBox(
+              height: 100,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ListenableBuilder(
+                  listenable: notifier,
+                  builder: (context, child) {
+                    if (notifier.isEmpty) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        spacing: 8,
+                        children: [
+                          FProgress.circularIcon(),
+                          Text('Searching for devices...'),
+                        ],
                       );
-                      return;
                     }
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      clipBehavior: Clip.hardEdge,
-                      builder: (context) {
-                        return ListenableBuilder(
-                          listenable: notifier,
-                          builder: (context, child) => OnlineRecivers(
-                            devices: notifier.devices,
-                            onTap: (device) {
-                              Navigator.pop(context);
-                              client.upload(files, device.ipAddress);
-                            },
-                          ),
-                        );
-                      },
+                    return Row(
+                      spacing: 8,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: notifier.devices
+                          .map(
+                            (device) => FButton(
+                              prefix: Icon(FIcons.send),
+                              child: Text(device.name),
+                              onPress: () =>
+                                  client.upload(files, device.ipAddress),
+                            ),
+                          )
+                          .toList(),
                     );
                   },
-                  icon: const Icon(LucideIcons.send),
-                  label: Text('Send'),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -188,24 +185,4 @@ class _SendScreenState extends State<SendScreen> {
     notifier.dispose();
     super.dispose();
   }
-
-  // showTransferDialog() {
-  //   showAdaptiveDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         title: Text('Sending'),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.pop(context);
-  //             },
-  //             child: Text('Cancel'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:anysend/utils/data.dart' show formatFileSize;
 import 'package:flutter/material.dart';
+import 'package:forui/widgets/tile.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
@@ -22,8 +23,8 @@ class FileInfoTile extends StatelessWidget {
     final fileName = p.basename(filePath);
     final fileType = p.extension(filePath).replaceFirst('.', '').toUpperCase();
 
-    return ListTile(
-      leading: Icon(Icons.insert_drive_file, color: Colors.blue),
+    return FTile(
+      prefix: Icon(Icons.insert_drive_file, color: Colors.blue),
       title: Text(fileName, overflow: TextOverflow.ellipsis),
       subtitle: Row(
         children: [
@@ -34,7 +35,7 @@ class FileInfoTile extends StatelessWidget {
             FileSizeWidget(filePath: filePath),
         ],
       ),
-      trailing: IconButton(onPressed: onRemoveTap, icon: Icon(LucideIcons.x)),
+      suffix: IconButton(onPressed: onRemoveTap, icon: Icon(LucideIcons.x)),
     );
   }
 }
