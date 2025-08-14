@@ -18,32 +18,46 @@ class Server {
 
   late String _downloadPath;
 
-  final _metadataSubject = BehaviorSubject<TransferMetadata>();
-  Stream<TransferMetadata> get transferMetadata => _metadataSubject.stream;
+  final _metadataSubject = BehaviorSubject<TransferMetadata?>();
+  Stream<TransferMetadata?> get transferMetadata => _metadataSubject.stream;
 
-  final VoidCallback? onStart;
-  final VoidCallback? onComplete;
+  final VoidCallback onStart;
+  final Future<bool> Function(String? clientAddress) onRequest;
+  final VoidCallback onComplete;
 
-  Server({this.onStart, this.onComplete});
+  String _senderIp = '';
+
+  Server({
+    required this.onStart,
+    required this.onComplete,
+    required this.onRequest,
+  });
 
   Future<void> start() async {
-    _router.post('/upload', _handleUpload);
     _downloadPath = await getSavePath();
     await File(path.join(_downloadPath, '.test')).writeAsString('');
+
+    _router.post('/upload', _handleUpload);
+    _router.get('/request', _handleRequest);
     _server = await io.serve(_router.call, InternetAddress.anyIPv4, kTcpPort);
   }
 
   Future<Response> _handleUpload(Request request) async {
-    final contentType = request.headers['content-type'];
     final fileSizeHeader = request.headers['x-file-size'];
     int totalFileSize = int.parse(fileSizeHeader!);
 
+    final contentType = request.headers['content-type'];
     if (contentType == null || !contentType.startsWith('multipart/form-data')) {
       return Response(400, body: 'Unsupported content type');
     }
 
+    if (_getClientAddress(request) != _senderIp) {
+      return Response.forbidden('Transfer not accepted from this IP');
+    }
+    _senderIp = '';
+
+    onStart.call();
     if (request.formData() case var form?) {
-      onStart?.call();
       int bytesWritten = 0;
       await for (final data in form.formData) {
         if (data.name == 'files') {
@@ -67,13 +81,34 @@ class Server {
       }
     }
 
-    onComplete?.call();
+    onComplete();
+    _metadataSubject.add(null);
+
     return Response.ok('File uploaded');
+  }
+
+  Future<Response> _handleRequest(Request request) async {
+    final clientAddress = _getClientAddress(request);
+    final accepted = await onRequest(clientAddress);
+
+    if (!accepted) {
+      return Response.forbidden('Transfer not accepted');
+    }
+
+    _senderIp = clientAddress;
+    return Response.ok('Request accepted');
   }
 
   void close() {
     _server?.close();
     _server = null;
+    _senderIp = '';
     _metadataSubject.close();
   }
+}
+
+String _getClientAddress(Request request) {
+  return (request.context['shelf.io.connection_info'] as HttpConnectionInfo)
+      .remoteAddress
+      .address;
 }

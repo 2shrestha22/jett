@@ -50,6 +50,8 @@ dependencies:
   lucide_icons_flutter: ^3.0.8
   forui: ^0.14.1
   forui_assets: ^0.14.0
+  mime: ^2.0.0
+  http_parser: ^4.1.2
 
 dev_dependencies:
   flutter_test:

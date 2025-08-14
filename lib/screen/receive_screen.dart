@@ -23,7 +23,38 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   void initState() {
     super.initState();
     _server = Server(
-      onStart: () async {
+      onRequest: (clientAddress) async {
+        final accept = await showFDialog(
+          context: context,
+          builder: (context, _, __) {
+            return FDialog.adaptive(
+              title: Text('Accept Files?'),
+              body: Text(
+                'Files are being sent from $clientAddress. Do you want to accept them?',
+              ),
+              actions: [
+                FButton(
+                  style: FButtonStyle.secondary(),
+                  onPress: () {
+                    Navigator.pop(context, false);
+                  },
+                  child: Text('Cancel'),
+                ),
+                FButton(
+                  style: FButtonStyle.primary(),
+                  onPress: () {
+                    Navigator.pop(context, true);
+                  },
+                  child: Text('Accept'),
+                ),
+              ],
+            );
+          },
+        );
+
+        return accept;
+      },
+      onStart: () {
         setState(() {
           transfering = true;
         });

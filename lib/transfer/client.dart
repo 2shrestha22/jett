@@ -7,13 +7,15 @@ import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/transfer_metadata.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:rxdart/subjects.dart';
+import 'package:mime/mime.dart';
 
 class Client {
   final _httpClient = HttpClient();
 
-  final _metadataSubject = BehaviorSubject<TransferMetadata>();
-  Stream<TransferMetadata> get transferMetadata => _metadataSubject.stream;
+  final _metadataSubject = BehaviorSubject<TransferMetadata?>();
+  Stream<TransferMetadata?> get transferMetadata => _metadataSubject.stream;
 
   final VoidCallback? onStart;
   // Average Byte/s speed
@@ -21,7 +23,14 @@ class Client {
 
   Client({this.onStart, this.onComplete});
 
-  void upload(List<PlatformFile> files, String ipAddress) async {
+  Future<bool> requestTransfer(String ipAddress) async {
+    final uri = Uri.parse('http://$ipAddress:$kTcpPort/request');
+    final response = await http.get(uri);
+
+    return response.statusCode == 200;
+  }
+
+  Future<void> upload(List<PlatformFile> files, String ipAddress) async {
     int byteCount = 0;
     // final totalSize = await getFilesSize(files);
     final totalSize = files.fold(
@@ -35,8 +44,18 @@ class Client {
     final requestMultipart = http.MultipartRequest('POST', uri);
 
     for (var file in files) {
+      final filePath = file.path;
+      final mimeType = filePath != null ? lookupMimeType(filePath) : null;
+      final contentType = mimeType != null ? MediaType.parse(mimeType) : null;
+
       requestMultipart.files.add(
-        await http.MultipartFile.fromPath('files', file.path!),
+        http.MultipartFile(
+          'files',
+          file.readStream!,
+          file.size,
+          filename: file.name,
+          contentType: contentType,
+        ),
       );
     }
 
@@ -104,6 +123,7 @@ class Client {
       ),
     );
     onStart?.call();
+
     await httpClientRequest.addStream(streamUpload);
 
     final httpResponse = await httpClientRequest.close();
@@ -112,7 +132,7 @@ class Client {
       final elapsedSeconds = stopwatch.elapsedMilliseconds / 1000;
       final avgSpeedBps = byteCount / elapsedSeconds;
       onComplete?.call(avgSpeedBps);
-
+      _metadataSubject.add(null);
       await readResponseAsString(httpResponse);
     } else {
       throw Exception('Failed to upload files: ${httpResponse.statusCode}');

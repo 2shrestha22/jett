@@ -26,6 +26,7 @@ class _PickerButtonsState extends State<PickerButtons> {
                 allowMultiple: true,
                 type: FileType.any,
                 onFileLoading: _onFileLoadHandler,
+                withReadStream: true,
               );
               if (result != null && result.files.isNotEmpty) {
                 widget.onPick(result.files);

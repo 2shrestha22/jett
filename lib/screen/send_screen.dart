@@ -31,9 +31,9 @@ class _SendScreenState extends State<SendScreen> {
     _initListener();
     client = Client(
       onStart: () {
-        setState(() {
-          transfering = true;
-        });
+        // setState(() {
+        //   transfering = true;
+        // });
       },
       onComplete: (speedMbps) async {
         await showFDialog(
@@ -164,8 +164,26 @@ class _SendScreenState extends State<SendScreen> {
                             (device) => FButton(
                               prefix: Icon(FIcons.send),
                               child: Text(device.name),
-                              onPress: () =>
-                                  client.upload(files, device.ipAddress),
+                              onPress: () async {
+                                setState(() {
+                                  transfering = true;
+                                });
+                                try {
+                                  final request = await client.requestTransfer(
+                                    device.ipAddress,
+                                  );
+                                  if (request) {
+                                    await client.upload(
+                                      files,
+                                      device.ipAddress,
+                                    );
+                                  }
+                                } catch (e) {
+                                  setState(() {
+                                    transfering = false;
+                                  });
+                                }
+                              },
                             ),
                           )
                           .toList(),
