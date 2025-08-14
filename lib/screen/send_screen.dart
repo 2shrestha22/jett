@@ -69,6 +69,7 @@ class _SendScreenState extends State<SendScreen> {
   }
 
   Future<void> _initListener() async {
+    await presenceListener.init();
     await presenceListener.listenMessage((message, ipAddress, port) {
       notifier.add(
         Device(ipAddress: ipAddress, port: port, name: message.name),

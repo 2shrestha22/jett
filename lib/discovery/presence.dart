@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:anysend/model/message.dart';
@@ -29,9 +28,6 @@ class PresenceBroadcaster {
     // then in periodic time
     _timer = Timer.periodic(pingInterval, (timer) async {
       _socket?.send(data, _multicastAddress, kUdpPort);
-      log(
-        'Sent Presense: $_baseMessage to ${_multicastAddress.address}:$kUdpPort',
-      );
     });
   }
 
@@ -58,14 +54,12 @@ class PresenceListener {
 
   RawDatagramSocket? _socket;
 
-  Future<void> listenMessage(OnMessageCallback onMessage) async {
-    _socket = await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4,
-      kUdpPort,
-      reuseAddress: true,
-    );
+  Future<void> init() async {
+    _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, kUdpPort);
     _socket?.joinMulticast(_multicastAddress);
+  }
 
+  Future<void> listenMessage(OnMessageCallback onMessage) async {
     _socket?.listen((event) {
       if (event == RawSocketEvent.read) {
         final datagram = _socket?.receive();
