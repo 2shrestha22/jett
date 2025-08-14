@@ -52,6 +52,7 @@ dependencies:
   forui_assets: ^0.14.0
   mime: ^2.0.0
   http_parser: ^4.1.2
+  network_info_plus: ^6.1.4
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,7 @@ import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/utils/data.dart';
+import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
@@ -24,10 +25,16 @@ class _SendScreenState extends State<SendScreen> {
   late final Client client;
 
   bool transfering = false;
+  String ip = '';
 
   @override
   void initState() {
     super.initState();
+    getLocalIp().then((ip) {
+      setState(() {
+        this.ip = ip;
+      });
+    });
     _initListener();
     client = Client(
       onStart: () {
@@ -134,7 +141,12 @@ class _SendScreenState extends State<SendScreen> {
                       ],
                     );
                   }
-                  return SizedBox.shrink();
+                  return Column(
+                    children: [
+                      Text('Waiting for receiver to accept...'),
+                      Text('Your IP: $ip'),
+                    ],
+                  );
                 },
               ),
             )
@@ -163,27 +175,8 @@ class _SendScreenState extends State<SendScreen> {
                           .map(
                             (device) => FButton(
                               prefix: Icon(FIcons.send),
+                              onPress: () => _handleOnPress(device),
                               child: Text(device.name),
-                              onPress: () async {
-                                setState(() {
-                                  transfering = true;
-                                });
-                                try {
-                                  final request = await client.requestTransfer(
-                                    device.ipAddress,
-                                  );
-                                  if (request) {
-                                    await client.upload(
-                                      files,
-                                      device.ipAddress,
-                                    );
-                                  }
-                                } catch (e) {
-                                  setState(() {
-                                    transfering = false;
-                                  });
-                                }
-                              },
                             ),
                           )
                           .toList(),
@@ -195,6 +188,43 @@ class _SendScreenState extends State<SendScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleOnPress(Device device) async {
+    if (files.isEmpty) {
+      await showFDialog(
+        context: context,
+        builder: (context, _, __) {
+          return FDialog.adaptive(
+            title: Text('No files selected'),
+            body: Text('Please select files to send.'),
+            actions: [
+              FButton(
+                style: FButtonStyle.primary(),
+                onPress: () {
+                  Navigator.pop(context);
+                },
+                child: Text('Ok'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    setState(() {
+      transfering = true;
+    });
+    try {
+      final request = await client.requestTransfer(device.ipAddress);
+      if (request) {
+        await client.upload(files, device.ipAddress);
+      }
+    } finally {
+      setState(() {
+        transfering = false;
+      });
+    }
   }
 
   @override

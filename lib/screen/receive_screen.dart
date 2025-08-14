@@ -22,6 +22,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   @override
   void initState() {
     super.initState();
+
     _server = Server(
       onRequest: (clientAddress) async {
         final accept = await showFDialog(
@@ -29,8 +30,14 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
           builder: (context, _, __) {
             return FDialog.adaptive(
               title: Text('Accept Files?'),
-              body: Text(
-                'Files are being sent from $clientAddress. Do you want to accept them?',
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Files are being sent from $clientAddress.'),
+                  Text(
+                    'Make sure to match the IP address with the sender\'s screen.',
+                  ),
+                ],
               ),
               actions: [
                 FButton(
@@ -84,7 +91,6 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         _receiver.startPresenceAnnounce();
       },
     );
-
     _initReceiver();
   }
 
@@ -102,7 +108,6 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
           spacing: 8,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(FIcons.download),
             if (transfering)
               StreamBuilder(
                 stream: _server.transferMetadata,
@@ -123,8 +128,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                   return SizedBox.shrink();
                 },
               )
-            else
+            else ...[
+              Icon(FIcons.download),
               const Text('Waiting for files...'),
+            ],
           ],
         ),
       ),
