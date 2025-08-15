@@ -51,7 +51,6 @@ class PresenceBroadcaster {
 
 class PresenceListener {
   final _multicastAddress = InternetAddress(kAddress);
-
   RawDatagramSocket? _socket;
 
   Future<void> init() async {

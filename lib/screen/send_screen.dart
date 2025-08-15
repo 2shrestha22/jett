@@ -2,14 +2,16 @@ import 'package:anysend/model/device.dart';
 import 'package:anysend/notifier/receivers_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
+import 'package:anysend/screen/widgets/speedometer_widget.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/utils/data.dart';
 import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
-import 'package:anysend/widgets/transfer_progress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+
+enum UploadState { idle, waitingForReceiver, uploading }
 
 class SendScreen extends StatefulWidget {
   const SendScreen({super.key});
@@ -20,58 +22,65 @@ class SendScreen extends StatefulWidget {
 
 class _SendScreenState extends State<SendScreen> {
   final presenceListener = PresenceListener();
-  final notifier = ReceiversNotifier();
+  final receivers = Receivers();
   final files = <PlatformFile>[];
   late final Client client;
 
-  bool transfering = false;
-  String ip = '';
+  UploadState uploadState = UploadState.idle;
+  String ipAddr = '';
 
   @override
   void initState() {
     super.initState();
     getLocalIp().then((ip) {
       setState(() {
-        this.ip = ip;
+        ipAddr = ip;
       });
     });
-    _initListener();
+    _initPresenceListener();
     client = Client(
-      onStart: () {
-        // setState(() {
-        //   transfering = true;
-        // });
-      },
-      onComplete: (speedMbps) async {
-        await showFDialog(
-          context: context,
-          builder: (context, _, __) {
-            return FDialog.adaptive(
-              title: Text('Completed!'),
-              body: Text(formatTransferRate(speedMbps)),
-              actions: [
-                FButton(
-                  style: FButtonStyle.primary(),
-                  onPress: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text('Ok'),
-                ),
-              ],
-            );
-          },
-        );
-        setState(() {
-          transfering = false;
-        });
-      },
+      onUploadStart: _onUploadStartHandler,
+      onUploadFinish: _onUploadFinishHandler,
     );
   }
 
-  Future<void> _initListener() async {
+  void _onUploadStartHandler() {
+    setState(() {
+      uploadState = UploadState.uploading;
+    });
+  }
+
+  void _onUploadFinishHandler() async {
+    await showFDialog(
+      context: context,
+      builder: (context, _, __) {
+        return FDialog.adaptive(
+          title: Text('Files Sent!'),
+          body: Text(
+            formatTransferRate(client.speedometerReadings?.avgSpeedBps ?? 0),
+          ),
+          actions: [
+            FButton(
+              style: FButtonStyle.primary(),
+              onPress: () {
+                Navigator.pop(context);
+              },
+              child: Text('Ok'),
+            ),
+          ],
+        );
+      },
+    );
+    setState(() {
+      files.clear();
+      uploadState = UploadState.idle;
+    });
+  }
+
+  Future<void> _initPresenceListener() async {
     await presenceListener.init();
     await presenceListener.listenMessage((message, ipAddress, port) {
-      notifier.add(
+      receivers.add(
         Device(ipAddress: ipAddress, port: port, name: message.name),
         message.available,
       );
@@ -118,48 +127,38 @@ class _SendScreenState extends State<SendScreen> {
                 },
               ),
             ),
-          if (transfering)
+          if (uploadState == UploadState.uploading)
+            SpeedometerWidget(
+              speedometerReadingsStream: client.speedometerReadingsStream,
+            ),
+          if (uploadState == UploadState.waitingForReceiver)
             SizedBox(
               height: 100,
-              child: StreamBuilder(
-                stream: client.transferMetadata,
-                builder: (context, asyncSnapshot) {
-                  final data = asyncSnapshot.data;
-                  if (data != null) {
-                    final progress = data.transferredBytes / data.totalSize;
-                    return Column(
+              child: Center(
+                child: Column(
+                  children: [
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      spacing: 8,
                       children: [
-                        TransferProgressIndicator(progress: progress),
-                        if (data.speedBps != null)
-                          Center(
-                            child: Text(
-                              formatTransferRate(data.speedBps!),
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        FProgress.circularIcon(),
+                        Text('Waiting for receiver to accept.'),
                       ],
-                    );
-                  }
-                  return Column(
-                    children: [
-                      Text('Waiting for receiver to accept...'),
-                      Text('Your IP: $ip'),
-                    ],
-                  );
-                },
+                    ),
+                    Text('Your IP: $ipAddr'),
+                  ],
+                ),
               ),
-            )
-          else
+            ),
+          if (uploadState == UploadState.idle)
             SizedBox(
               height: 100,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: ListenableBuilder(
-                  listenable: notifier,
+                  listenable: receivers,
                   builder: (context, child) {
-                    if (notifier.isEmpty) {
+                    if (receivers.isEmpty) {
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         spacing: 8,
@@ -172,7 +171,7 @@ class _SendScreenState extends State<SendScreen> {
                     return Row(
                       spacing: 8,
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: notifier.devices
+                      children: receivers.devices
                           .map(
                             (device) => FButton(
                               prefix: Icon(FIcons.send),
@@ -214,16 +213,16 @@ class _SendScreenState extends State<SendScreen> {
       return;
     }
     setState(() {
-      transfering = true;
+      uploadState = UploadState.waitingForReceiver;
     });
     try {
-      final request = await client.requestTransfer(device.ipAddress);
+      final request = await client.requestUpload(device.ipAddress);
       if (request) {
         await client.upload(files, device.ipAddress);
       }
     } finally {
       setState(() {
-        transfering = false;
+        uploadState = UploadState.idle;
       });
     }
   }
@@ -231,7 +230,7 @@ class _SendScreenState extends State<SendScreen> {
   @override
   void dispose() {
     presenceListener.close();
-    notifier.dispose();
+    receivers.dispose();
     super.dispose();
   }
 }

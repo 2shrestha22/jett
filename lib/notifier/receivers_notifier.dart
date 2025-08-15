@@ -5,14 +5,14 @@ import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/device.dart';
 import 'package:flutter/widgets.dart';
 
-class ReceiversNotifier extends ChangeNotifier {
+class Receivers extends ChangeNotifier {
   final Set<Device> _activeDevices = {};
   // <deviceIp, lastSeen>
   final _lastSeenHashMap = HashMap<String, DateTime>();
 
   late Timer _timer;
 
-  ReceiversNotifier() {
+  Receivers() {
     _timer = Timer.periodic(cleanUpInterval, (timer) {
       if (_activeDevices.isEmpty) return;
 
