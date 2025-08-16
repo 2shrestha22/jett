@@ -1,4 +1,5 @@
 import 'package:anysend/model/device.dart';
+import 'package:anysend/model/file_info.dart';
 import 'package:anysend/notifier/receivers_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
@@ -7,7 +8,6 @@ import 'package:anysend/transfer/client.dart';
 import 'package:anysend/utils/data.dart';
 import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
@@ -23,7 +23,7 @@ class SendScreen extends StatefulWidget {
 class _SendScreenState extends State<SendScreen> {
   final presenceListener = PresenceListener();
   final receivers = Receivers();
-  final files = <PlatformFile>[];
+  final files = <FileInfo>[];
   late final Client client;
 
   UploadState uploadState = UploadState.idle;
@@ -115,8 +115,8 @@ class _SendScreenState extends State<SendScreen> {
                         ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
                         : EdgeInsetsGeometry.only(bottom: 8),
                     child: FileInfoTile(
-                      filePath: file.path!,
-                      fileSize: file.size,
+                      fileName: file.name,
+                      // fileSize: file.size,
                       onRemoveTap: () {
                         setState(() {
                           files.remove(file);

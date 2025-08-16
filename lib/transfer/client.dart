@@ -4,11 +4,12 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:anysend/discovery/konst.dart';
+import 'package:anysend/model/file_info.dart';
 import 'package:anysend/transfer/speedometer.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:uri_content/uri_content.dart';
 
 class Client {
   final VoidCallback? onUploadStart;
@@ -18,6 +19,7 @@ class Client {
 
   final _httpClient = HttpClient();
   final _speedometer = Speedometer();
+  final uriContent = UriContent();
 
   Stream<SpeedometerReading?> get speedometerReadingsStream =>
       _speedometer.readingStream;
@@ -34,31 +36,31 @@ class Client {
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> upload(List<PlatformFile> files, String ipAddr) async {
+  Future<void> upload(List<FileInfo> files, String ipAddr) async {
     _speedometer.reset();
 
-    final totalSize = files.fold(
-      0,
-      (previousValue, element) => previousValue + element.size,
-    );
-    _speedometer.fileSize = totalSize;
+    int totalSize = 0;
 
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload');
     final httpClientRequest = await _httpClient.postUrl(uri);
 
     final requestMultipart = http.MultipartRequest('POST', uri);
     for (var file in files) {
+      final size = await uriContent.getContentLength(Uri.parse(file.uri!)) ?? 0;
+      totalSize += size;
+      final fileStream = uriContent.getContentStream(Uri.parse(file.uri!));
       requestMultipart.files.add(
         http.MultipartFile(
           'files',
-          file.readStream!,
-          file.size,
+          fileStream,
+          size,
           filename: file.name,
           contentType: _getContentType(file.path),
         ),
       );
     }
 
+    _speedometer.fileSize = totalSize;
     final multipartRequestStream = requestMultipart.finalize();
 
     httpClientRequest.headers.set('x-file-size', totalSize.toString());

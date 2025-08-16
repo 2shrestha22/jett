@@ -53,6 +53,9 @@ dependencies:
   mime: ^2.0.0
   http_parser: ^4.1.2
   network_info_plus: ^6.1.4
+  image_picker: ^1.1.2
+  fast_file_picker: ^0.4.7
+  uri_content: ^3.1.1
 
 dev_dependencies:
   flutter_test:

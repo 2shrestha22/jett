@@ -7,21 +7,24 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
 class FileInfoTile extends StatelessWidget {
-  final String filePath;
+  final String fileName;
   final int? fileSize;
   final VoidCallback onRemoveTap;
 
   const FileInfoTile({
     super.key,
-    required this.filePath,
+    required this.fileName,
     this.fileSize,
     required this.onRemoveTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fileName = p.basename(filePath);
-    final fileType = p.extension(filePath).replaceFirst('.', '').toUpperCase();
+    final fileName = p.basename(this.fileName);
+    final fileType = p
+        .extension(this.fileName)
+        .replaceFirst('.', '')
+        .toUpperCase();
 
     return FTile(
       prefix: Icon(Icons.insert_drive_file, color: Colors.blue),
@@ -32,7 +35,7 @@ class FileInfoTile extends StatelessWidget {
           if (fileSize != null)
             Text(formatFileSize(fileSize!))
           else
-            FileSizeWidget(filePath: filePath),
+            FileSizeWidget(filePath: this.fileName),
         ],
       ),
       suffix: IconButton(onPressed: onRemoveTap, icon: Icon(LucideIcons.x)),

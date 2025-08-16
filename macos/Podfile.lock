@@ -1,9 +1,16 @@
 PODS:
+  - accessing_security_scoped_resource (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - device_info_plus (0.0.1):
     - FlutterMacOS
   - file_picker (0.0.1):
     - FlutterMacOS
+  - file_selector_macos (0.0.1):
+    - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - macos_file_picker (0.0.1):
+    - FlutterMacOS
   - network_info_plus (0.0.1):
     - FlutterMacOS
   - package_info_plus (0.0.1):
@@ -11,36 +18,54 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - uri_content (0.0.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
+  - accessing_security_scoped_resource (from `Flutter/ephemeral/.symlinks/plugins/accessing_security_scoped_resource/darwin`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
+  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - macos_file_picker (from `Flutter/ephemeral/.symlinks/plugins/macos_file_picker/macos`)
   - network_info_plus (from `Flutter/ephemeral/.symlinks/plugins/network_info_plus/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
+  - uri_content (from `Flutter/ephemeral/.symlinks/plugins/uri_content/macos`)
 
 EXTERNAL SOURCES:
+  accessing_security_scoped_resource:
+    :path: Flutter/ephemeral/.symlinks/plugins/accessing_security_scoped_resource/darwin
   device_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   file_picker:
     :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
+  file_selector_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  macos_file_picker:
+    :path: Flutter/ephemeral/.symlinks/plugins/macos_file_picker/macos
   network_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/network_info_plus/macos
   package_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
+  uri_content:
+    :path: Flutter/ephemeral/.symlinks/plugins/uri_content/macos
 
 SPEC CHECKSUMS:
+  accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
+  file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  macos_file_picker: 8308ccb8cca0578190f640cd163b3da001db0222
   network_info_plus: 21d1cd6a015ccb2fdff06a1fbfa88d54b4e92f61
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  uri_content: 6c7c098bcc83078659b4d274f42db92691eb9123
 
 PODFILE CHECKSUM: 7eb978b976557c8c1cd717d8185ec483fd090a82
 
