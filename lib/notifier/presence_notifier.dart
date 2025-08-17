@@ -5,14 +5,8 @@ import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/device.dart';
 import 'package:flutter/widgets.dart';
 
-class Receivers extends ChangeNotifier {
-  final Set<Device> _activeDevices = {};
-  // <deviceIp, lastSeen>
-  final _lastSeenHashMap = HashMap<String, DateTime>();
-
-  late Timer _timer;
-
-  Receivers() {
+class PresenceNotifier extends ChangeNotifier {
+  PresenceNotifier() {
     _timer = Timer.periodic(cleanUpInterval, (timer) {
       if (_activeDevices.isEmpty) return;
 
@@ -28,7 +22,13 @@ class Receivers extends ChangeNotifier {
     });
   }
 
-  void add(Device device, bool available) {
+  final Set<Device> _activeDevices = {};
+  List<Device> get devices => _activeDevices.toList();
+  final _lastSeenHashMap = HashMap<String, DateTime>(); // <IP, LastSeen>
+
+  late Timer _timer;
+
+  void update(Device device, bool available) {
     bool mutated = false;
     // update the last seen time
     if (!available) {
@@ -40,9 +40,6 @@ class Receivers extends ChangeNotifier {
     }
     if (mutated) notifyListeners();
   }
-
-  bool get isEmpty => _activeDevices.isEmpty;
-  List<Device> get devices => _activeDevices.toList();
 
   @override
   void dispose() {

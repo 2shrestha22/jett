@@ -11,23 +11,22 @@ class SpeedometerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          StreamBuilder(
-            stream: speedometerReadingsStream,
-            builder: (context, asyncSnapshot) {
-              final data = asyncSnapshot.data;
-              if (data != null) {
-                return TransferProgressIndicator(progress: data.progress);
-              }
-              return SizedBox.shrink();
-            },
-          ),
-          StreamBuilder(
+    return Stack(
+      children: [
+        StreamBuilder(
+          stream: speedometerReadingsStream,
+          builder: (context, asyncSnapshot) {
+            final data = asyncSnapshot.data;
+            if (data != null) {
+              return TransferProgressIndicator(progress: data.progress);
+            }
+            return SizedBox.shrink();
+          },
+        ),
+        Positioned(
+          right: 4,
+          bottom: 2,
+          child: StreamBuilder(
             stream: speedometerReadingsStream.throttleTime(
               Duration(milliseconds: 500),
             ),
@@ -36,16 +35,16 @@ class SpeedometerWidget extends StatelessWidget {
               if (data != null) {
                 return Center(
                   child: Text(
-                    formatTransferRate(data.avgSpeedBps),
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    formatTransferRate(data.speedBps),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 );
               }
               return SizedBox.shrink();
             },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

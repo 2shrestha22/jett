@@ -4,6 +4,7 @@ import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/transfer/speedometer.dart';
 import 'package:anysend/utils/save_path.dart';
 import 'package:flutter/services.dart';
+import 'package:rxdart/subjects.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -31,6 +32,9 @@ class Server {
   Stream<SpeedometerReading?> get speedometerReadingStream =>
       _speedometer.readingStream;
   SpeedometerReading? get speedometerReading => _speedometer.reading;
+
+  final _fileNameSubject = BehaviorSubject<String>();
+  Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
   String _senderIp = '';
 
@@ -80,6 +84,7 @@ class Server {
           final fileName = data.filename ?? 'file';
           final destinationFile = File('$_downloadPath/$fileName');
           final sink = destinationFile.openWrite();
+          _fileNameSubject.add(fileName);
           await for (final chunk in data.part) {
             sink.add(chunk);
             _speedometer.count(chunk.length);

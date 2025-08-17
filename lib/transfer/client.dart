@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:anysend/discovery/konst.dart';
@@ -9,6 +11,7 @@ import 'package:anysend/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:rxdart/subjects.dart';
 import 'package:uri_content/uri_content.dart';
 
 class Client {
@@ -17,13 +20,16 @@ class Client {
 
   Client({this.onUploadStart, this.onUploadFinish});
 
-  final _httpClient = HttpClient();
+  // final _httpClient = HttpClient();
   final _speedometer = Speedometer();
-  final uriContent = UriContent();
+  final _uriContent = UriContent();
 
   Stream<SpeedometerReading?> get speedometerReadingsStream =>
       _speedometer.readingStream;
   SpeedometerReading? get speedometerReadings => _speedometer.reading;
+
+  final _fileNameSubject = BehaviorSubject<String>();
+  Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
   /// Retruns true if the transfer request is accepted by the receiver.
   Future<bool> requestUpload(String ipAddr) async {
@@ -36,19 +42,51 @@ class Client {
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> upload(List<FileInfo> files, String ipAddr) async {
+  Future<void> upload(
+    List<FileInfo> files,
+    String ipAddr,
+    Future<void> abortTrigger,
+  ) async {
     _speedometer.reset();
+    onUploadStart?.call();
 
-    int totalSize = 0;
-
+    int totalFileSize = 0;
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload');
-    final httpClientRequest = await _httpClient.postUrl(uri);
 
+    final streamedRequest = http.AbortableStreamedRequest(
+      'POST',
+      uri,
+      abortTrigger: abortTrigger,
+    );
+
+    // create a multipart request body stream
+    // and add speedometer counting to each file stream
     final requestMultipart = http.MultipartRequest('POST', uri);
     for (var file in files) {
-      final size = await uriContent.getContentLength(Uri.parse(file.uri!)) ?? 0;
-      totalSize += size;
-      final fileStream = uriContent.getContentStream(Uri.parse(file.uri!));
+      // TODO: in linux and windows URI is null and should be handled
+      // differently using file path
+      final size =
+          await _uriContent.getContentLength(Uri.parse(file.uri!)) ?? 0;
+      totalFileSize += size;
+      final fileStream = _uriContent
+          .getContentStream(Uri.parse(file.uri!))
+          .transform(
+            StreamTransformer<Uint8List, Uint8List>.fromHandlers(
+              handleData: (data, sink) {
+                sink.add(data);
+                _fileNameSubject.add(file.name);
+                _speedometer.count(data.length);
+              },
+              handleError: (error, stack, sink) {
+                _speedometer.stop();
+                throw error;
+              },
+              handleDone: (sink) {
+                _speedometer.stop();
+                sink.close();
+              },
+            ),
+          );
       requestMultipart.files.add(
         http.MultipartFile(
           'files',
@@ -59,44 +97,29 @@ class Client {
         ),
       );
     }
+    _speedometer.fileSize = totalFileSize;
+    final multipartRequestBodyStream = requestMultipart.finalize();
 
-    _speedometer.fileSize = totalSize;
-    final multipartRequestStream = requestMultipart.finalize();
-
-    httpClientRequest.headers.set('x-file-size', totalSize.toString());
+    streamedRequest.headers.addAll({'x-file-size': totalFileSize.toString()});
     // content type header is only avaiable after finalizing the request
     final multipartHeader =
         requestMultipart.headers[HttpHeaders.contentTypeHeader];
     if (multipartHeader != null) {
-      httpClientRequest.headers.set(
-        HttpHeaders.contentTypeHeader,
-        multipartHeader,
-      );
+      streamedRequest.headers.addAll({
+        HttpHeaders.contentTypeHeader: multipartHeader,
+      });
     }
 
-    final Stream<List<int>> streamUpload = multipartRequestStream.transform(
-      StreamTransformer.fromHandlers(
-        handleData: (data, sink) {
-          sink.add(data);
-          _speedometer.count(data.length);
-        },
-        handleError: (error, stack, sink) {
-          _speedometer.stop();
-          throw error;
-        },
-        handleDone: (sink) {
-          _speedometer.stop();
-          sink.close();
-        },
-      ),
+    unawaited(
+      streamedRequest.sink
+          .addStream(multipartRequestBodyStream)
+          .then((_) => streamedRequest.sink.close()),
     );
-
-    onUploadStart?.call();
-    await httpClientRequest.addStream(streamUpload);
-    final httpResponse = await httpClientRequest.close();
+    final httpResponse = await streamedRequest.send();
 
     if (httpResponse.statusCode == 200) {
-      await _readResponseAsString(httpResponse);
+      final response = await _readResponseAsString(httpResponse);
+      log(response);
     } else {
       throw Exception('Failed to upload files: ${httpResponse.statusCode}');
     }
@@ -104,10 +127,10 @@ class Client {
   }
 }
 
-Future<String> _readResponseAsString(HttpClientResponse response) {
+Future<String> _readResponseAsString(http.StreamedResponse response) {
   final completer = Completer<String>();
   final contents = StringBuffer();
-  response.transform(utf8.decoder).listen((String data) {
+  response.stream.transform(utf8.decoder).listen((String data) {
     contents.write(data);
   }, onDone: () => completer.complete(contents.toString()));
 

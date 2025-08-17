@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:anysend/discovery/presence.dart';
+import 'package:anysend/screen/widgets/file_info_stream_builder.dart';
 import 'package:anysend/screen/widgets/speedometer_widget.dart';
 import 'package:anysend/transfer/server.dart';
 import 'package:anysend/utils/data.dart';
@@ -15,7 +16,7 @@ class ReceiveScreen extends StatefulWidget {
 }
 
 class _ReceiveScreenState extends State<ReceiveScreen> {
-  final receiver = PresenceBroadcaster();
+  final boradcaster = PresenceBroadcaster();
   late final Server server;
 
   bool isReceiving = false;
@@ -56,14 +57,38 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         );
       },
     );
-    receiver.startPresenceAnnounce();
+    boradcaster.startPresenceAnnounce();
   }
 
-  void _onDownloadStartHandler() {
-    setState(() {
-      isReceiving = true;
-    });
-    receiver.stopPresenceAnnounce();
+  Future<void> _onDownloadStartHandler() async {
+    boradcaster.stopPresenceAnnounce();
+    await showFDialog(
+      context: context,
+      builder: (context, _, __) {
+        return FDialog.adaptive(
+          title: Text('Receiving files'),
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SpeedometerWidget(
+                speedometerReadingsStream: server.speedometerReadingStream,
+              ),
+              FileInfoStreamBuilder(stream: server.fileNameStream),
+            ],
+          ),
+          actions: [
+            FButton(
+              style: FButtonStyle.primary(),
+              onPress: () {
+                Navigator.pop(context, false);
+              },
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+    boradcaster.startPresenceAnnounce();
   }
 
   Future<bool> _onRequestHandler(clientAddress) async {
@@ -105,9 +130,9 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   }
 
   Future<void> _initReceiver() async {
-    await receiver.init();
+    await boradcaster.init();
     await server.start();
-    await receiver.startPresenceAnnounce();
+    await boradcaster.startPresenceAnnounce();
   }
 
   @override
@@ -117,16 +142,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         child: Column(
           spacing: 8,
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isReceiving)
-              SpeedometerWidget(
-                speedometerReadingsStream: server.speedometerReadingStream,
-              )
-            else ...[
-              Icon(FIcons.download),
-              const Text('Waiting for files...'),
-            ],
-          ],
+          children: [Icon(FIcons.download), const Text('Waiting for files...')],
         ),
       ),
     );
@@ -134,7 +150,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   @override
   void dispose() {
-    receiver.close();
+    boradcaster.close();
     server.close();
     super.dispose();
   }

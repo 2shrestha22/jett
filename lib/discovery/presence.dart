@@ -22,6 +22,8 @@ class PresenceBroadcaster {
   }
 
   Future<void> startPresenceAnnounce() async {
+    if (_timer?.isActive ?? false) return;
+
     final data = _baseMessage.toJson().codeUnits;
     // announce as soon as this method is called
     _socket?.send(data, _multicastAddress, kUdpPort);
@@ -52,14 +54,15 @@ class PresenceBroadcaster {
 class PresenceListener {
   final _multicastAddress = InternetAddress(kAddress);
   RawDatagramSocket? _socket;
+  StreamSubscription<RawSocketEvent>? _subscription;
 
   Future<void> init() async {
     _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, kUdpPort);
     _socket?.joinMulticast(_multicastAddress);
   }
 
-  Future<void> listenMessage(OnMessageCallback onMessage) async {
-    _socket?.listen((event) {
+  void startListening(OnMessageCallback onMessage) {
+    _subscription = _socket?.listen((event) {
       if (event == RawSocketEvent.read) {
         final datagram = _socket?.receive();
         if (datagram != null) {
@@ -70,7 +73,13 @@ class PresenceListener {
     });
   }
 
+  void stopListening() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
   void close() {
+    stopListening();
     _socket?.close();
     _socket = null;
   }

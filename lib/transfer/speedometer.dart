@@ -1,6 +1,9 @@
+import 'package:dart_mappable/dart_mappable.dart';
 import 'package:rxdart/subjects.dart';
+part 'speedometer.mapper.dart';
 
-class SpeedometerReading {
+@MappableClass()
+class SpeedometerReading with SpeedometerReadingMappable {
   final int totalBytesTransferred;
   final int elapsedMilliseconds;
   final int? fileSize;
@@ -83,6 +86,8 @@ class Speedometer {
     if (_stopwatch.isRunning) {
       _stopwatch.stop();
     }
+    // make speed 0 when stopped
+    _reading.add(_reading.value?.copyWith(speedBps: 0));
   }
 
   void reset() {

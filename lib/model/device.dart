@@ -1,6 +1,8 @@
-import 'package:equatable/equatable.dart';
+import 'package:dart_mappable/dart_mappable.dart';
+part 'device.mapper.dart';
 
-class Device extends Equatable {
+@MappableClass()
+class Device with DeviceMappable {
   final String ipAddress;
   final int port;
   final String name;
@@ -15,7 +17,4 @@ class Device extends Equatable {
   String toString() {
     return 'Device(ipAddress: $ipAddress, port: $port, name: $name)';
   }
-
-  @override
-  List<Object> get props => [ipAddress];
 }

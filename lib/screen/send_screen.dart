@@ -1,17 +1,13 @@
 import 'package:anysend/model/device.dart';
 import 'package:anysend/model/file_info.dart';
-import 'package:anysend/notifier/receivers_notifier.dart';
+import 'package:anysend/notifier/presence_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
 import 'package:anysend/screen/widgets/picker_buttons.dart';
-import 'package:anysend/screen/widgets/speedometer_widget.dart';
-import 'package:anysend/transfer/client.dart';
-import 'package:anysend/utils/data.dart';
+import 'package:anysend/screen/widgets/send_dialog.dart';
 import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
-
-enum UploadState { idle, waitingForReceiver, uploading }
 
 class SendScreen extends StatefulWidget {
   const SendScreen({super.key});
@@ -22,69 +18,36 @@ class SendScreen extends StatefulWidget {
 
 class _SendScreenState extends State<SendScreen> {
   final presenceListener = PresenceListener();
-  final receivers = Receivers();
+  final presenceNotifier = PresenceNotifier();
   final files = <FileInfo>[];
-  late final Client client;
 
-  UploadState uploadState = UploadState.idle;
   String ipAddr = '';
 
   @override
   void initState() {
     super.initState();
+    _initLocalIp();
+    _setupPresenceListener();
+  }
+
+  void _initLocalIp() {
     getLocalIp().then((ip) {
       setState(() {
         ipAddr = ip;
       });
     });
-    _initPresenceListener();
-    client = Client(
-      onUploadStart: _onUploadStartHandler,
-      onUploadFinish: _onUploadFinishHandler,
-    );
   }
 
-  void _onUploadStartHandler() {
-    setState(() {
-      uploadState = UploadState.uploading;
-    });
-  }
-
-  void _onUploadFinishHandler() async {
-    await showFDialog(
-      context: context,
-      builder: (context, _, __) {
-        return FDialog.adaptive(
-          title: Text('Files Sent!'),
-          body: Text(
-            formatTransferRate(client.speedometerReadings?.avgSpeedBps ?? 0),
-          ),
-          actions: [
-            FButton(
-              style: FButtonStyle.primary(),
-              onPress: () {
-                Navigator.pop(context);
-              },
-              child: Text('Ok'),
-            ),
-          ],
-        );
-      },
-    );
-    setState(() {
-      files.clear();
-      uploadState = UploadState.idle;
-    });
-  }
-
-  Future<void> _initPresenceListener() async {
+  Future<void> _setupPresenceListener() async {
     await presenceListener.init();
-    await presenceListener.listenMessage((message, ipAddress, port) {
-      receivers.add(
-        Device(ipAddress: ipAddress, port: port, name: message.name),
-        message.available,
-      );
-    });
+    presenceListener.startListening(_notifierUpdateCallback);
+  }
+
+  void _notifierUpdateCallback(message, ipAddress, port) {
+    presenceNotifier.update(
+      Device(ipAddress: ipAddress, port: port, name: message.name),
+      message.available,
+    );
   }
 
   @override
@@ -127,64 +90,40 @@ class _SendScreenState extends State<SendScreen> {
                 },
               ),
             ),
-          if (uploadState == UploadState.uploading)
-            SpeedometerWidget(
-              speedometerReadingsStream: client.speedometerReadingsStream,
-            ),
-          if (uploadState == UploadState.waitingForReceiver)
-            SizedBox(
-              height: 100,
-              child: Center(
-                child: Column(
-                  children: [
-                    Row(
+          SizedBox(
+            height: 100,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: ListenableBuilder(
+                listenable: presenceNotifier,
+                builder: (context, child) {
+                  if (presenceNotifier.devices.isEmpty) {
+                    return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       spacing: 8,
                       children: [
                         FProgress.circularIcon(),
-                        Text('Waiting for receiver to accept.'),
+                        Text('Searching for devices...'),
                       ],
-                    ),
-                    Text('Your IP: $ipAddr'),
-                  ],
-                ),
-              ),
-            ),
-          if (uploadState == UploadState.idle)
-            SizedBox(
-              height: 100,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: ListenableBuilder(
-                  listenable: receivers,
-                  builder: (context, child) {
-                    if (receivers.isEmpty) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        spacing: 8,
-                        children: [
-                          FProgress.circularIcon(),
-                          Text('Searching for devices...'),
-                        ],
-                      );
-                    }
-                    return Row(
-                      spacing: 8,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: receivers.devices
-                          .map(
-                            (device) => FButton(
-                              prefix: Icon(FIcons.send),
-                              onPress: () => _handleOnPress(device),
-                              child: Text(device.name),
-                            ),
-                          )
-                          .toList(),
                     );
-                  },
-                ),
+                  }
+                  return Row(
+                    spacing: 8,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: presenceNotifier.devices
+                        .map(
+                          (device) => FButton(
+                            prefix: Icon(FIcons.send),
+                            onPress: () => _handleOnPress(device),
+                            child: Text(device.name),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
               ),
             ),
+          ),
         ],
       ),
     );
@@ -201,9 +140,7 @@ class _SendScreenState extends State<SendScreen> {
             actions: [
               FButton(
                 style: FButtonStyle.primary(),
-                onPress: () {
-                  Navigator.pop(context);
-                },
+                onPress: () => Navigator.pop(context),
                 child: Text('Ok'),
               ),
             ],
@@ -212,25 +149,19 @@ class _SendScreenState extends State<SendScreen> {
       );
       return;
     }
-    setState(() {
-      uploadState = UploadState.waitingForReceiver;
-    });
-    try {
-      final request = await client.requestUpload(device.ipAddress);
-      if (request) {
-        await client.upload(files, device.ipAddress);
-      }
-    } finally {
-      setState(() {
-        uploadState = UploadState.idle;
-      });
-    }
+
+    showFDialog<int>(
+      useSafeArea: true,
+      barrierDismissible: false,
+      context: context,
+      builder: (context, _, __) => SendDialog(device: device, files: files),
+    );
   }
 
   @override
   void dispose() {
     presenceListener.close();
-    receivers.dispose();
+    presenceNotifier.dispose();
     super.dispose();
   }
 }
