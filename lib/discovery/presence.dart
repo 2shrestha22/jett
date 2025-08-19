@@ -21,14 +21,14 @@ class PresenceBroadcaster {
     _socket?.joinMulticast(_multicastAddress);
   }
 
-  Future<void> startPresenceAnnounce() async {
+  void startPresenceAnnounce() {
     if (_timer?.isActive ?? false) return;
 
     final data = _baseMessage.toJson().codeUnits;
     // announce as soon as this method is called
     _socket?.send(data, _multicastAddress, kUdpPort);
     // then in periodic time
-    _timer = Timer.periodic(pingInterval, (timer) async {
+    _timer = Timer.periodic(pingInterval, (timer) {
       _socket?.send(data, _multicastAddress, kUdpPort);
     });
   }

@@ -1,4 +1,7 @@
 PODS:
+  - accessing_security_scoped_resource (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - device_info_plus (0.0.1):
     - Flutter
   - DKImagePickerController/Core (4.3.9):
@@ -35,7 +38,15 @@ PODS:
   - file_picker (0.0.1):
     - DKImagePickerController/PhotoGallery
     - Flutter
+  - file_selector_ios (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
+  - image_picker_ios (0.0.1):
+    - Flutter
+  - ios_document_picker (0.0.1):
+    - Flutter
+  - network_info_plus (0.0.1):
+    - Flutter
   - package_info_plus (0.4.5):
     - Flutter
   - path_provider_foundation (0.0.1):
@@ -45,13 +56,21 @@ PODS:
     - SDWebImage/Core (= 5.21.1)
   - SDWebImage/Core (5.21.1)
   - SwiftyGif (5.4.5)
+  - uri_content (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
+  - accessing_security_scoped_resource (from `.symlinks/plugins/accessing_security_scoped_resource/darwin`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
+  - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
   - Flutter (from `Flutter`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - ios_document_picker (from `.symlinks/plugins/ios_document_picker/ios`)
+  - network_info_plus (from `.symlinks/plugins/network_info_plus/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - uri_content (from `.symlinks/plugins/uri_content/ios`)
 
 SPEC REPOS:
   trunk:
@@ -61,27 +80,45 @@ SPEC REPOS:
     - SwiftyGif
 
 EXTERNAL SOURCES:
+  accessing_security_scoped_resource:
+    :path: ".symlinks/plugins/accessing_security_scoped_resource/darwin"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
   file_picker:
     :path: ".symlinks/plugins/file_picker/ios"
+  file_selector_ios:
+    :path: ".symlinks/plugins/file_selector_ios/ios"
   Flutter:
     :path: Flutter
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
+  ios_document_picker:
+    :path: ".symlinks/plugins/ios_document_picker/ios"
+  network_info_plus:
+    :path: ".symlinks/plugins/network_info_plus/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  uri_content:
+    :path: ".symlinks/plugins/uri_content/ios"
 
 SPEC CHECKSUMS:
+  accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
+  file_selector_ios: f92e583d43608aebc2e4a18daac30b8902845502
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  ios_document_picker: c346f87936f15bc75252e888cd975cd9709b7fb3
+  network_info_plus: cf61925ab5205dce05a4f0895989afdb6aade5fc
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   SDWebImage: f29024626962457f3470184232766516dee8dfea
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
+  uri_content: 70a99850f89322ef5eca2e69451ee38221b917ec
 
 PODFILE CHECKSUM: 4305caec6b40dde0ae97be1573c53de1882a07e5
 

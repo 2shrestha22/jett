@@ -1,9 +1,9 @@
 import 'package:anysend/model/device.dart';
 import 'package:anysend/model/file_info.dart';
-import 'package:anysend/notifier/presence_notifier.dart';
+import 'package:anysend/screen/send/presence_notifier.dart';
 import 'package:anysend/discovery/presence.dart';
-import 'package:anysend/screen/widgets/picker_buttons.dart';
-import 'package:anysend/screen/widgets/send_dialog.dart';
+import 'package:anysend/screen/send/picker_buttons.dart';
+import 'package:anysend/screen/send/send_dialog.dart';
 import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:flutter/material.dart';

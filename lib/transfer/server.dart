@@ -1,9 +1,11 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/transfer/speedometer.dart';
 import 'package:anysend/utils/save_path.dart';
 import 'package:flutter/services.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -24,6 +26,7 @@ class Server {
   });
 
   final _router = Router();
+  final _handler = Pipeline();
   HttpServer? _server;
 
   late String _downloadPath;
@@ -39,12 +42,15 @@ class Server {
   String _senderIp = '';
 
   Future<void> start() async {
-    _downloadPath = await getSavePath();
-    await File(path.join(_downloadPath, '.test')).writeAsString('');
+    // _downloadPath = await getSavePath();
+    // await File(path.join(_downloadPath, '.test')).writeAsString('');
 
-    _router.get('/request', _handleRequest);
-    _router.post('/upload', _handleUpload);
+    _router
+      ..get('/request', _handleRequest)
+      ..post('/upload', _handleUpload);
+
     _server = await io.serve(_router.call, InternetAddress.anyIPv4, kTcpPort);
+    _server?.idleTimeout = Duration(seconds: 10);
   }
 
   Future<Response> _handleRequest(Request request) async {
@@ -82,15 +88,22 @@ class Server {
       await for (final data in form.formData) {
         if (data.name == 'files') {
           final fileName = data.filename ?? 'file';
-          final destinationFile = File('$_downloadPath/$fileName');
-          final sink = destinationFile.openWrite();
+          // final destinationFile = File('$_downloadPath/$fileName');
+          // final sink = destinationFile.openWrite();
           _fileNameSubject.add(fileName);
-          await for (final chunk in data.part) {
-            sink.add(chunk);
-            _speedometer.count(chunk.length);
+          try {
+            await for (final chunk in data.part.timeout(
+              Duration(seconds: 10),
+            )) {
+              // sink.add(chunk);
+              _speedometer.count(chunk.length);
+            }
+            // await sink.flush();
+            // await sink.close();
+          } catch (e) {
+            _speedometer.stop();
+            return Response.badRequest(body: 'Upload timed out');
           }
-          await sink.flush();
-          await sink.close();
         }
       }
     }
