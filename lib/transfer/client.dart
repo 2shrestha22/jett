@@ -34,7 +34,7 @@ class Client {
   /// Retruns true if the transfer request is accepted by the receiver.
   Future<bool> requestUpload(String ipAddr) async {
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
-    final response = await http.get(uri);
+    final response = await http.Client().get(uri);
 
     return response.statusCode == 200;
   }

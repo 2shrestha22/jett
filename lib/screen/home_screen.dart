@@ -1,6 +1,6 @@
 import 'package:anysend/discovery/konst.dart';
-import 'package:anysend/screen/receive_screen.dart';
-import 'package:anysend/screen/send_screen.dart';
+import 'package:anysend/screen/receive/receive_screen.dart';
+import 'package:anysend/screen/send/send_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
@@ -28,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return FScaffold(
       header: isLargeScreen ? null : FHeader(title: Text(appName)),
-      // childPad: true,
       sidebar: isLargeScreen
           ? FSidebar(
               style: (style) =>
@@ -70,14 +69,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icon(FIcons.send),
                   label: const Text('Send'),
                 ),
-                FBottomNavigationBarItem(
-                  icon: Icon(FIcons.settings),
-                  label: const Text('Settings'),
-                ),
+                // FBottomNavigationBarItem(
+                //   icon: Icon(FIcons.settings),
+                //   label: const Text('Settings'),
+                // ),
               ],
             ),
 
-      child: [ReceiveScreen(), SendScreen(), Placeholder()][index],
+      child: [ReceiveScreen(), SendScreen()][index],
     );
   }
 }
