@@ -41,7 +41,6 @@ class Server {
 
   Future<void> start() async {
     _downloadPath = await getSavePath();
-    await File(path.join(_downloadPath, '.test')).writeAsString('');
 
     _router
       ..get('/request', _handleRequest)
