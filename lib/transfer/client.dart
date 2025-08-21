@@ -7,6 +7,7 @@ import 'dart:ui';
 
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/file_info.dart';
+import 'package:anysend/model/transfer_status.dart';
 import 'package:anysend/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -15,11 +16,6 @@ import 'package:rxdart/subjects.dart';
 import 'package:uri_content/uri_content.dart';
 
 class Client {
-  final VoidCallback? onUploadStart;
-  final VoidCallback? onUploadFinish;
-
-  Client({this.onUploadStart, this.onUploadFinish});
-
   // final _httpClient = HttpClient();
   final _speedometer = Speedometer();
   final _uriContent = UriContent();
@@ -31,8 +27,20 @@ class Client {
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
+  Completer<void>? _abortTrigger;
+
+  // final _transferStatus = BehaviorSubject<TransferStatus>();
+  // Stream<TransferStatus> get transferStatus =>
+  //     _transferStatus.stream.distinct();
+
   /// Retruns true if the transfer request is accepted by the receiver.
   Future<bool> requestUpload(String ipAddr) async {
+    // _transferStatus.add(
+    //   TransferStatus(state: TransferState.waiting, files: []),
+    // );
+
+    _abortTrigger = Completer<void>();
+
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
     final response = await http.Client().get(uri);
 
@@ -42,13 +50,11 @@ class Client {
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> upload(
-    List<FileInfo> files,
-    String ipAddr,
-    Future<void> abortTrigger,
-  ) async {
+  Future<void> upload(List<FileInfo> files, String ipAddr) async {
+    // user already cancelled send, using reset()
+    if (_abortTrigger == null) return;
+
     _speedometer.reset();
-    onUploadStart?.call();
 
     int totalFileSize = 0;
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload');
@@ -56,7 +62,7 @@ class Client {
     final streamedRequest = http.AbortableStreamedRequest(
       'POST',
       uri,
-      abortTrigger: abortTrigger,
+      abortTrigger: _abortTrigger?.future,
     );
 
     // create a multipart request body stream
@@ -123,7 +129,13 @@ class Client {
     } else {
       throw Exception('Failed to upload files: ${httpResponse.statusCode}');
     }
-    onUploadFinish?.call();
+  }
+
+  /// Reset speedometer readings and session
+  void reset() {
+    _speedometer.reset();
+    _abortTrigger?.complete();
+    _abortTrigger = null;
   }
 }
 

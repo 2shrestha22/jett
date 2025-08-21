@@ -55,6 +55,7 @@ dependencies:
   image_picker: ^1.1.2
   fast_file_picker: ^0.4.7
   uri_content: ^3.1.1
+  flutter_hooks: ^0.21.3+1
 
 dev_dependencies:
   flutter_test:

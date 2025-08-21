@@ -19,9 +19,9 @@ class Server {
   final VoidCallback onDownloadFinish;
 
   Server({
+    required this.onRequest,
     required this.onDownloadStart,
     required this.onDownloadFinish,
-    required this.onRequest,
   });
 
   final _router = Router();
@@ -37,7 +37,10 @@ class Server {
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
-  String _senderIp = '';
+  String _clientIp = '';
+  // when this is true receiving file will be cancelled and reponse is
+  // sent to client
+  bool _shouldCancel = true;
 
   Future<void> start() async {
     _downloadPath = await getSavePath();
@@ -54,15 +57,20 @@ class Server {
     final accepted = await onRequest(clientAddress);
 
     if (!accepted) {
-      _senderIp = '';
+      _clientIp = '';
       return Response.forbidden('Transfer not accepted');
     }
 
-    _senderIp = clientAddress;
+    _shouldCancel = false;
+    _clientIp = clientAddress;
     return Response.ok('Request accepted');
   }
 
   Future<Response> _handleUpload(Request request) async {
+    if (_getClientAddress(request) != _clientIp) {
+      return Response.forbidden('Transfer not accepted from this IP');
+    }
+
     final fileSizeHeader = request.headers['x-file-size'];
     int totalFileSize = int.parse(fileSizeHeader!);
 
@@ -71,31 +79,31 @@ class Server {
       return Response(400, body: 'Unsupported content type');
     }
 
-    if (_getClientAddress(request) != _senderIp) {
-      return Response.forbidden('Transfer not accepted from this IP');
-    }
-
     _speedometer.reset();
     _speedometer.fileSize = totalFileSize;
-    _senderIp = '';
+    // clear as soon as receiving starts to avoid duplicate request
+    _clientIp = '';
     onDownloadStart.call();
 
     if (request.formData() case var form?) {
       await for (final data in form.formData) {
         if (data.name == 'files') {
           final fileName = data.filename ?? 'file';
-          final destinationFile = File('$_downloadPath/$fileName');
-          final sink = destinationFile.openWrite();
+          // final destinationFile = File('$_downloadPath/$fileName');
+          // final sink = destinationFile.openWrite();
           _fileNameSubject.add(fileName);
           try {
             await for (final chunk in data.part.timeout(
               Duration(seconds: 10),
             )) {
-              sink.add(chunk);
+              if (_shouldCancel) {
+                return Response.badRequest(body: 'Cancelled by user');
+              }
+              // sink.add(chunk);
               _speedometer.count(chunk.length);
             }
-            await sink.flush();
-            await sink.close();
+            // await sink.flush();
+            // await sink.close();
           } catch (e) {
             _speedometer.stop();
             return Response.badRequest(body: 'Upload timed out');
@@ -110,10 +118,24 @@ class Server {
     return Response.ok('File uploaded');
   }
 
+  /// Cancel receiving files
+  // void requestCancel() {
+  //   _shouldCancel = true;
+  // }
+
+  /// Reset speedometer readings and session
+  void reset() {
+    _clientIp = '';
+    _shouldCancel = true;
+    _speedometer.reset();
+  }
+
+  /// Closes server and it can't be used without starting it again.
   void close() {
     _server?.close();
     _server = null;
-    _senderIp = '';
+    _clientIp = '';
+    _shouldCancel = false;
     _speedometer.reset();
   }
 }
