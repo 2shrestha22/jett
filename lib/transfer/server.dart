@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:anysend/discovery/konst.dart';
@@ -17,11 +18,13 @@ class Server {
   final Future<bool> Function(String clientAddress) onRequest;
   final VoidCallback onDownloadStart;
   final VoidCallback onDownloadFinish;
+  final VoidCallback onError;
 
   Server({
     required this.onRequest,
     required this.onDownloadStart,
     required this.onDownloadFinish,
+    required this.onError,
   });
 
   final _router = Router();
@@ -85,14 +88,14 @@ class Server {
     _clientIp = '';
     onDownloadStart.call();
 
-    if (request.formData() case var form?) {
-      await for (final data in form.formData) {
-        if (data.name == 'files') {
-          final fileName = data.filename ?? 'file';
-          // final destinationFile = File('$_downloadPath/$fileName');
-          // final sink = destinationFile.openWrite();
-          _fileNameSubject.add(fileName);
-          try {
+    try {
+      if (request.formData() case var form?) {
+        await for (final data in form.formData) {
+          if (data.name == 'files') {
+            final fileName = data.filename ?? 'file';
+            // final destinationFile = File('$_downloadPath/$fileName');
+            // final sink = destinationFile.openWrite();
+            _fileNameSubject.add(fileName);
             await for (final chunk in data.part.timeout(
               Duration(seconds: 10),
             )) {
@@ -104,12 +107,13 @@ class Server {
             }
             // await sink.flush();
             // await sink.close();
-          } catch (e) {
-            _speedometer.stop();
-            return Response.badRequest(body: 'Upload timed out');
           }
         }
       }
+    } on TimeoutException catch (_) {
+      onError();
+      _speedometer.stop();
+      return Response.badRequest();
     }
 
     _speedometer.stop();

@@ -48,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initBroadcaster() async {
     await presenceBroadcaster.init();
-    // await server.start();
     presenceBroadcaster.startPresenceAnnounce();
   }
 
@@ -70,6 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
       onDownloadStart: _onDownloadStartHandler,
       onDownloadFinish: () {
         receiveStateNotifier.value = TransferState.completed;
+      },
+      onError: () {
+        receiveStateNotifier.value = TransferState.failed;
       },
     );
     await server.start();
@@ -132,8 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
     server.reset();
     presenceBroadcaster.startPresenceAnnounce();
   }
-
-  _onUploadStartHandler() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -204,15 +204,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     sendStateNotifier.value = TransferState.idle;
                   });
 
-                  final accpeted = await client.requestUpload(device.ipAddress);
-                  if (accpeted) {
-                    try {
-                      sendStateNotifier.value = TransferState.inProgress;
-                      await client.upload(files.value, device.ipAddress);
-                      sendStateNotifier.value = TransferState.completed;
-                    } catch (e) {
+                  try {
+                    final accpeted = await client.requestUpload(
+                      device.ipAddress,
+                    );
+                    if (!accpeted) {
                       sendStateNotifier.value = TransferState.failed;
+                      return;
                     }
+                    sendStateNotifier.value = TransferState.inProgress;
+                    await client.upload(files.value, device.ipAddress);
+                    sendStateNotifier.value = TransferState.completed;
+                  } catch (e) {
+                    sendStateNotifier.value = TransferState.failed;
                   }
                 },
               ),
