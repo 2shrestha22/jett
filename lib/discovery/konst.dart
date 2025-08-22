@@ -7,4 +7,4 @@ const Duration cleanUpInterval = Duration(milliseconds: 1000);
 const Duration pingInterval = Duration(milliseconds: 2000);
 const Duration deviceTimeout = Duration(milliseconds: 3000);
 
-const appName = 'Jett';
+const appName = 'jett';

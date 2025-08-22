@@ -7,3 +7,11 @@ Future<String> getLocalIp() async {
 
   return wifiIP ?? '';
 }
+
+(String, String) splitAddress(String addr) {
+  final parts = addr.split('.');
+  final networkIdentifier = '${parts.take(parts.length - 1).join('.')}.';
+  final hostIdentifier = parts.last;
+
+  return (networkIdentifier, hostIdentifier);
+}

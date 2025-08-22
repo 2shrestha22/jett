@@ -12,6 +12,7 @@ import 'package:anysend/screen/send/presence_notifier.dart';
 import 'package:anysend/screen/transfer_screen.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/transfer/server.dart';
+import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -77,18 +78,33 @@ class _HomeScreenState extends State<HomeScreen> {
     await server.start();
   }
 
-  Future<bool> _onRequestHandler(clientAddress) async {
+  Future<bool> _onRequestHandler(String clientAddress) async {
     final accept = await showFDialog(
       context: context,
       builder: (context, _, __) {
+        final theme = context.theme;
+        final address = splitAddress(clientAddress);
         return FDialog.adaptive(
           title: Text('Incoming File Transfer'),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('$clientAddress wants to send you files.'),
-              Text(
-                "Please confirm the sender's IP address matches your screen.",
+              RichText(
+                text: TextSpan(
+                  text: address.$1,
+                  children: [
+                    TextSpan(
+                      text: address.$2,
+                      style: theme.typography.base.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(text: ' wants to send you files.'),
+                  ],
+                  style: theme.typography.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
               ),
             ],
           ),
@@ -141,7 +157,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final files = useState<List<FileInfo>>([]);
 
     return FScaffold(
-      header: FHeader(title: Text(appName)),
+      header: FHeader(
+        title: Text(appName),
+        suffixes: [
+          if (files.value.isNotEmpty)
+            FButton.icon(
+              onPress: () {
+                files.value = [];
+              },
+              child: Icon(FIcons.x),
+            ),
+        ],
+      ),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.max,
@@ -156,31 +183,55 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Spacer(),
-              FAvatar.raw(size: 40, child: Icon(FIcons.radio, size: 30)),
-              Text('Online', style: context.theme.typography.xs),
-              Text(
-                'Your Address: ${localAddress.value}',
-                style: context.theme.typography.sm,
-              ),
-            ] else ...[
-              Expanded(
-                child: ListView.builder(
-                  itemCount: files.value.length,
-                  itemBuilder: (context, index) {
-                    final file = files.value[index];
-                    return Padding(
-                      padding: index == 0
-                          ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
-                          : EdgeInsetsGeometry.only(bottom: 8),
-                      child: FileInfoTile(
-                        fileName: file.name,
-                        // fileSize: file.size,
-                        onRemoveTap: () {
-                          files.value = [...files.value]..remove(file);
-                        },
+              FAvatar.raw(size: 50, child: Icon(FIcons.radio, size: 30)),
+
+              if (localAddress.value?.isNotEmpty ?? false)
+                Builder(
+                  builder: (context) {
+                    final address = splitAddress(localAddress.value!);
+                    final theme = context.theme;
+                    return RichText(
+                      text: TextSpan(
+                        text: address.$1,
+                        children: [
+                          TextSpan(
+                            text: address.$2,
+                            style: theme.typography.base.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(text: ' (online)'),
+                        ],
+                        style: context.theme.typography.sm,
                       ),
                     );
                   },
+                ),
+            ] else ...[
+              PopScope(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, result) {
+                  files.value = [];
+                },
+                child: Expanded(
+                  child: ListView.builder(
+                    itemCount: files.value.length,
+                    itemBuilder: (context, index) {
+                      final file = files.value[index];
+                      return Padding(
+                        padding: index == 0
+                            ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
+                            : EdgeInsetsGeometry.only(bottom: 8),
+                        child: FileInfoTile(
+                          fileName: file.name,
+                          // fileSize: file.size,
+                          onRemoveTap: () {
+                            files.value = [...files.value]..remove(file);
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
 
