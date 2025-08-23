@@ -3,15 +3,17 @@ import 'package:anysend/model/transfer_status.dart';
 import 'package:anysend/screen/widgets/file_info_stream_builder.dart';
 import 'package:anysend/screen/widgets/speedometer_widget.dart';
 import 'package:anysend/transfer/speedometer.dart';
+import 'package:anysend/utils/data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
+import 'package:rxdart/streams.dart';
 
 enum TransferType { send, receive }
 
 class TransferScreen extends StatefulHookWidget {
   final TransferType transferType;
-  final Stream<SpeedometerReading?> speedometerReadingStream;
+  final ValueStream<SpeedometerReading?> speedometerReadingStream;
   final Stream<String> fileNameStream;
 
   final ValueNotifier<TransferState> transferNotifier;
@@ -32,6 +34,7 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   Widget build(BuildContext context) {
     final ipAddress = useLocalAddress();
+    final theme = context.theme;
 
     return FScaffold(
       header: FHeader.nested(
@@ -51,25 +54,65 @@ class _TransferScreenState extends State<TransferScreen> {
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Column(
+            spacing: 8,
             children: [
               Spacer(),
-              SpeedometerWidget(
-                speedometerReadingsStream: widget.speedometerReadingStream,
-              ),
-              HookBuilder(
-                builder: (context) {
-                  final transferState = useListenable(widget.transferNotifier);
-                  return switch (transferState.value) {
-                    TransferState.idle => SizedBox.shrink(),
-                    TransferState.waiting => Text('Waiting for receiver'),
-                    TransferState.inProgress => FileInfoStreamBuilder(
-                      stream: widget.fileNameStream,
+              StreamBuilder(
+                stream: widget.speedometerReadingStream,
+                builder: (context, snapshot) {
+                  final speed = (snapshot.data?.speedBps ?? 0) / (1024 * 1024);
+
+                  return Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: (speed).toStringAsFixed(1),
+                          style: context.theme.typography.xl.copyWith(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        TextSpan(
+                          text: " MB/s", // unit part
+                          style: theme.typography.base.copyWith(
+                            color: theme.colors.mutedForeground,
+                          ),
+                        ),
+                      ],
                     ),
-                    TransferState.completed => Text('Transfer completed'),
-                    TransferState.failed => Text('Transfer failed'),
-                  };
+                    textAlign: TextAlign.center,
+                  );
                 },
               ),
+              SpeedometerWidget(
+                speedometerReadingsStream: widget.speedometerReadingStream,
+                showSpeed: false,
+              ),
+              DefaultTextStyle(
+                style: theme.typography.sm.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
+                child: HookBuilder(
+                  builder: (context) {
+                    final transferState = useListenable(
+                      widget.transferNotifier,
+                    );
+                    return switch (transferState.value) {
+                      TransferState.idle => SizedBox.shrink(),
+                      TransferState.waiting => Text('Waiting for receiver'),
+                      TransferState.inProgress => FileInfoStreamBuilder(
+                        stream: widget.fileNameStream,
+                      ),
+                      TransferState.completed => Text(
+                        'Transfer completed ${formatTransferRate(widget.speedometerReadingStream.value?.avgSpeedBps ?? 0)}',
+                      ),
+                      TransferState.failed => Text('Transfer failed'),
+                    };
+                  },
+                ),
+              ),
+              Spacer(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 spacing: 6,

@@ -6,7 +6,6 @@ import 'package:anysend/transfer/speedometer.dart';
 import 'package:anysend/utils/save_path.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:rxdart/subjects.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -33,9 +32,8 @@ class Server {
   late String _downloadPath;
 
   final _speedometer = Speedometer();
-  Stream<SpeedometerReading?> get speedometerReadingStream =>
+  ValueStream<SpeedometerReading?> get speedometerReadingStream =>
       _speedometer.readingStream;
-  SpeedometerReading? get speedometerReading => _speedometer.reading;
 
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();

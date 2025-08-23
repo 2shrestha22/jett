@@ -1,4 +1,5 @@
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
 part 'speedometer.mapper.dart';
 
@@ -34,8 +35,8 @@ class Speedometer {
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
 
   final _reading = BehaviorSubject<SpeedometerReading?>.seeded(null);
-  Stream<SpeedometerReading?> get readingStream => _reading;
-  SpeedometerReading? get reading => _reading.value;
+  ValueStream<SpeedometerReading?> get readingStream => _reading;
+  // SpeedometerReading? get reading => _reading.value;
 
   // Keep last chunks for rolling average
   final List<_ChunkData> _recentChunks = [];

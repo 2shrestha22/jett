@@ -3,15 +3,14 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/model/file_info.dart';
-import 'package:anysend/model/transfer_status.dart';
 import 'package:anysend/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:uri_content/uri_content.dart';
 
@@ -20,9 +19,8 @@ class Client {
   final _speedometer = Speedometer();
   final _uriContent = UriContent();
 
-  Stream<SpeedometerReading?> get speedometerReadingsStream =>
+  ValueStream<SpeedometerReading?> get speedometerReadingsStream =>
       _speedometer.readingStream;
-  SpeedometerReading? get speedometerReadings => _speedometer.reading;
 
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
@@ -75,7 +73,7 @@ class Client {
           await _uriContent.getContentLength(Uri.parse(file.uri!)) ?? 0;
       totalFileSize += size;
       final fileStream = _uriContent
-          .getContentStream(Uri.parse(file.uri!))
+          .getContentStream(Uri.parse(file.uri!), bufferSize: 1024 * 256)
           .transform(
             StreamTransformer<Uint8List, Uint8List>.fromHandlers(
               handleData: (data, sink) {

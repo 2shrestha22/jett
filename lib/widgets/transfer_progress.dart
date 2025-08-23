@@ -2,38 +2,38 @@ import 'package:flutter/material.dart';
 
 class TransferProgressIndicator extends StatelessWidget {
   final double progress; // 0.0 - 1.0
+  final double height;
 
-  const TransferProgressIndicator({super.key, required this.progress});
+  const TransferProgressIndicator({
+    super.key,
+    required this.progress,
+    this.height = 28,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final percent = (progress * 100).clamp(0, 100).toStringAsFixed(0);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final barWidth = constraints.maxWidth;
         final fillWidth = barWidth * progress;
+        final percent = (progress * 100).clamp(0, 100).toStringAsFixed(0);
 
         return Stack(
           alignment: Alignment.center,
           children: [
             // Background
             Container(
-              height: 28,
-              decoration: BoxDecoration(
-                color: Colors.grey[300], // background color
-              ),
+              height: height,
+              decoration: BoxDecoration(color: Colors.grey[300]),
             ),
 
             // Filled portion
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                height: 28,
+                height: height,
                 width: fillWidth,
-                decoration: BoxDecoration(
-                  color: Colors.black, // filled color
-                ),
+                decoration: BoxDecoration(color: Colors.black),
               ),
             ),
 
