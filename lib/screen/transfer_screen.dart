@@ -43,7 +43,7 @@ class _TransferScreenState extends State<TransferScreen> {
           TransferType.receive => Text('Receiving Files'),
           TransferType.send => Text('Sending Files'),
         },
-        prefixes: [
+        suffixes: [
           FButton.icon(
             onPress: () =>
                 Navigator.pop(context, widget.transferNotifier.value),

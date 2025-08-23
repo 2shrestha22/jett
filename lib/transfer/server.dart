@@ -91,8 +91,8 @@ class Server {
         await for (final data in form.formData) {
           if (data.name == 'files') {
             final fileName = data.filename ?? 'file';
-            // final destinationFile = File('$_downloadPath/$fileName');
-            // final sink = destinationFile.openWrite();
+            final destinationFile = File('$_downloadPath/$fileName');
+            final sink = destinationFile.openWrite();
             _fileNameSubject.add(fileName);
             await for (final chunk in data.part.timeout(
               Duration(seconds: 10),
@@ -100,11 +100,11 @@ class Server {
               if (_shouldCancel) {
                 return Response.badRequest(body: 'Cancelled by user');
               }
-              // sink.add(chunk);
+              sink.add(chunk);
               _speedometer.count(chunk.length);
             }
-            // await sink.flush();
-            // await sink.close();
+            await sink.flush();
+            await sink.close();
           }
         }
       }
