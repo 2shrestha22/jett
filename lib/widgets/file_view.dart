@@ -1,68 +1,91 @@
-import 'dart:io';
-
+import 'package:anysend/model/file_info.dart';
 import 'package:anysend/utils/data.dart' show formatFileSize;
 import 'package:flutter/material.dart';
+import 'package:forui/assets.dart';
 import 'package:forui/widgets/tile.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
-class FileInfoTile extends StatelessWidget {
-  final String fileName;
+class FileInfoTile extends StatefulWidget {
+  final FileInfo fileInfo;
   final int? fileSize;
   final VoidCallback onRemoveTap;
 
   const FileInfoTile({
     super.key,
-    required this.fileName,
+    required this.fileInfo,
     this.fileSize,
     required this.onRemoveTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final fileName = p.basename(this.fileName);
-    final fileType = p
-        .extension(this.fileName)
+  State<FileInfoTile> createState() => _FileInfoTileState();
+}
+
+class _FileInfoTileState extends State<FileInfoTile> {
+  late final String fileType;
+  late final IconData icon;
+
+  @override
+  void initState() {
+    super.initState();
+    fileType = p
+        .extension(widget.fileInfo.name)
         .replaceFirst('.', '')
         .toUpperCase();
 
-    return FTile(
-      prefix: Icon(Icons.insert_drive_file, color: Colors.blue),
-      title: Text(fileName, overflow: TextOverflow.ellipsis),
-      subtitle: Row(
-        children: [
-          Text("$fileType • "),
-          if (fileSize != null)
-            Text(formatFileSize(fileSize!))
-          else
-            FileSizeWidget(filePath: this.fileName),
-        ],
-      ),
-      suffix: IconButton(onPressed: onRemoveTap, icon: Icon(LucideIcons.x)),
-    );
+    switch (fileType) {
+      case 'JPG':
+      case 'JPEG':
+      case 'PNG':
+      case 'GIF':
+        icon = FIcons.fileImage;
+        break;
+      case 'MP3':
+      case 'WAV':
+        icon = FIcons.fileMusic;
+        break;
+      case 'MP4':
+      case 'AVI':
+      case 'MOV':
+        icon = FIcons.fileVideo;
+        break;
+      case 'ZIP':
+      case 'RAR':
+        icon = FIcons.fileArchive;
+        break;
+      case 'PDF':
+      case 'DOC':
+      case 'DOCX':
+        icon = FIcons.fileType;
+        break;
+      case 'TXT':
+        icon = FIcons.fileText;
+        break;
+      case 'APK':
+        icon = Icons.android;
+        break;
+      default:
+        icon = FIcons.file;
+    }
   }
-}
 
-class FileSizeWidget extends StatefulWidget {
-  const FileSizeWidget({super.key, required this.filePath});
-  final String filePath;
-
-  @override
-  State<FileSizeWidget> createState() => _FileSizeWidgetState();
-}
-
-class _FileSizeWidgetState extends State<FileSizeWidget> {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: File(widget.filePath).length(),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          final fileSize = snapshot.data!;
-          return Text(formatFileSize(fileSize));
-        }
-        return Text('');
-      },
+    return FTile(
+      prefix: Icon(icon, color: Colors.blue),
+      title: Text(widget.fileInfo.name, overflow: TextOverflow.ellipsis),
+      subtitle: Row(
+        children: [
+          Text(fileType),
+          if (widget.fileSize != null)
+            Text('• ${formatFileSize(widget.fileSize!)}'),
+        ],
+      ),
+      suffix: IconButton(
+        onPressed: widget.onRemoveTap,
+        icon: Icon(LucideIcons.x),
+      ),
     );
   }
 }

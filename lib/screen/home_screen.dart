@@ -13,7 +13,9 @@ import 'package:anysend/screen/send/presence_notifier.dart';
 import 'package:anysend/screen/transfer_screen.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/transfer/server.dart';
+import 'package:anysend/utils/io.dart';
 import 'package:anysend/utils/network.dart';
+import 'package:anysend/widgets/desktop_picker_button.dart';
 import 'package:anysend/widgets/drop_region.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/presence_icon.dart';
@@ -157,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final localAddress = useLocalAddress();
     final files = useState<List<FileInfo>>([]);
+    final theme = context.theme;
 
     return FScaffold(
       header: FHeader(
@@ -180,18 +183,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               if (files.value.isEmpty) ...[
                 Expanded(
-                  child: FileDropRegion(
-                    onFileAdd: (fileInfo) {
-                      files.value = [...files.value, fileInfo];
-                    },
-                    child: Center(
-                      child: PickerButtons(
-                        onPick: (data) {
-                          files.value = data;
-                        },
-                      ),
-                    ),
-                  ),
+                  child: isDesktop
+                      ? Center(
+                          child: DesktopPickerButton(
+                            onFileAdd: (addedFiles) {
+                              files.value = [...files.value, ...addedFiles];
+                            },
+                          ),
+                        )
+                      : FButton(onPress: () {}, child: Text('Select Files')),
                 ),
                 PresenceIcon(),
                 if (localAddress.value?.isNotEmpty ?? false)
@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
                                 : EdgeInsetsGeometry.only(bottom: 8),
                             child: FileInfoTile(
-                              fileName: file.name,
+                              fileInfo: file,
                               // fileSize: file.size,
                               onRemoveTap: () {
                                 files.value = [...files.value]..remove(file);
