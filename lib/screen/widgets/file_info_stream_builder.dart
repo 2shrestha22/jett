@@ -16,7 +16,7 @@ class FileInfoStreamBuilder extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           );
         }
-        return Text('Sending files...');
+        return Text('...');
       },
     );
   }

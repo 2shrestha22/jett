@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:anysend/core/hooks.dart';
 import 'package:anysend/discovery/konst.dart';
@@ -13,11 +14,13 @@ import 'package:anysend/screen/transfer_screen.dart';
 import 'package:anysend/transfer/client.dart';
 import 'package:anysend/transfer/server.dart';
 import 'package:anysend/utils/network.dart';
+import 'package:anysend/widgets/drop_region.dart';
 import 'package:anysend/widgets/file_view.dart';
 import 'package:anysend/widgets/presence_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 class HomeScreen extends StatefulHookWidget {
   const HomeScreen({super.key});
@@ -176,15 +179,20 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.max,
             children: [
               if (files.value.isEmpty) ...[
-                Spacer(),
-                Center(
-                  child: PickerButtons(
-                    onPick: (data) {
-                      files.value = data;
+                Expanded(
+                  child: FileDropRegion(
+                    onFileAdd: (fileInfo) {
+                      files.value = [...files.value, fileInfo];
                     },
+                    child: Center(
+                      child: PickerButtons(
+                        onPick: (data) {
+                          files.value = data;
+                        },
+                      ),
+                    ),
                   ),
                 ),
-                Spacer(),
                 PresenceIcon(),
                 if (localAddress.value?.isNotEmpty ?? false)
                   Builder(
@@ -211,23 +219,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     files.value = [];
                   },
                   child: Expanded(
-                    child: ListView.builder(
-                      itemCount: files.value.length,
-                      itemBuilder: (context, index) {
-                        final file = files.value[index];
-                        return Padding(
-                          padding: index == 0
-                              ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
-                              : EdgeInsetsGeometry.only(bottom: 8),
-                          child: FileInfoTile(
-                            fileName: file.name,
-                            // fileSize: file.size,
-                            onRemoveTap: () {
-                              files.value = [...files.value]..remove(file);
-                            },
-                          ),
-                        );
+                    child: FileDropRegion(
+                      onFileAdd: (fileInfo) {
+                        files.value = [...files.value, fileInfo];
                       },
+                      child: ListView.builder(
+                        itemCount: files.value.length,
+                        itemBuilder: (context, index) {
+                          final file = files.value[index];
+                          return Padding(
+                            padding: index == 0
+                                ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
+                                : EdgeInsetsGeometry.only(bottom: 8),
+                            child: FileInfoTile(
+                              fileName: file.name,
+                              // fileSize: file.size,
+                              onRemoveTap: () {
+                                files.value = [...files.value]..remove(file);
+                              },
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
