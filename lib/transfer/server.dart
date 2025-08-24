@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:anysend/discovery/konst.dart';
 import 'package:anysend/transfer/speedometer.dart';
 import 'package:anysend/utils/save_path.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -12,6 +12,8 @@ import 'package:shelf/shelf_io.dart' as io;
 
 import 'package:shelf_multipart/shelf_multipart.dart';
 import 'package:path/path.dart' as path;
+
+const disableFileWrite = kDebugMode;
 
 class Server {
   final Future<bool> Function(String clientAddress) onRequest;
@@ -50,7 +52,11 @@ class Server {
       ..get('/request', _handleRequest)
       ..post('/upload', _handleUpload);
 
-    _server = await io.serve(_router.call, InternetAddress.anyIPv4, kTcpPort);
+    final handler = const Pipeline()
+        .addMiddleware(logRequests())
+        .addHandler(_router.call);
+
+    _server = await io.serve(handler, InternetAddress.anyIPv4, kTcpPort);
   }
 
   Future<Response> _handleRequest(Request request) async {
@@ -91,7 +97,7 @@ class Server {
         await for (final data in form.formData) {
           if (data.name == 'files') {
             final fileName = data.filename ?? 'file';
-            final destinationFile = File('$_downloadPath/$fileName');
+            final destinationFile = File(path.join(_downloadPath, fileName));
             final sink = destinationFile.openWrite();
             _fileNameSubject.add(fileName);
             await for (final chunk in data.part.timeout(
@@ -100,7 +106,8 @@ class Server {
               if (_shouldCancel) {
                 return Response.badRequest(body: 'Cancelled by user');
               }
-              sink.add(chunk);
+
+              if (!disableFileWrite) sink.add(chunk);
               _speedometer.count(chunk.length);
             }
             await sink.flush();

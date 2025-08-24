@@ -32,6 +32,7 @@ class DesktopPickerButton extends StatelessWidget {
             }
           },
           child: Container(
+            padding: EdgeInsets.all(8),
             width: double.infinity,
             height: 200,
             alignment: Alignment.center,
@@ -43,7 +44,10 @@ class DesktopPickerButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 FAvatar.raw(size: 60, child: Icon(FIcons.filePlus2, size: 30)),
-                Text('Drag and drop or select files to share'),
+                Text(
+                  'Drag and drop or select files to share',
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),

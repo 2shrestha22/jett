@@ -18,7 +18,9 @@ import 'package:anysend/utils/network.dart';
 import 'package:anysend/widgets/desktop_picker_button.dart';
 import 'package:anysend/widgets/drop_region.dart';
 import 'package:anysend/widgets/file_view.dart';
+import 'package:anysend/widgets/mobile_picker_button.dart';
 import 'package:anysend/widgets/presence_icon.dart';
+import 'package:anysend/widgets/presence_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
@@ -42,6 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final Server server;
   final Client client = Client();
+
+  List<FileInfo> files = [];
 
   @override
   void initState() {
@@ -155,20 +159,24 @@ class _HomeScreenState extends State<HomeScreen> {
     presenceBroadcaster.startPresenceAnnounce();
   }
 
+  void _onFilePick(List<FileInfo> pickedFiles) {
+    setState(() {
+      files = [...files, ...pickedFiles];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final localAddress = useLocalAddress();
-    final files = useState<List<FileInfo>>([]);
-    final theme = context.theme;
-
     return FScaffold(
       header: FHeader(
         title: Text(appName),
         suffixes: [
-          if (files.value.isNotEmpty)
+          if (files.isNotEmpty)
             FButton.icon(
               onPress: () {
-                files.value = [];
+                setState(() {
+                  files = [];
+                });
               },
               child: Icon(FIcons.x),
             ),
@@ -177,115 +185,102 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
-          child: Column(
-            spacing: 8,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              if (files.value.isEmpty) ...[
-                Expanded(
-                  child: isDesktop
-                      ? Center(
-                          child: DesktopPickerButton(
-                            onFileAdd: (addedFiles) {
-                              files.value = [...files.value, ...addedFiles];
-                            },
-                          ),
-                        )
-                      : FButton(onPress: () {}, child: Text('Select Files')),
-                ),
-                PresenceIcon(),
-                if (localAddress.value?.isNotEmpty ?? false)
-                  Builder(
-                    builder: (context) {
-                      final address = splitAddress(localAddress.value!);
-                      return RichText(
-                        text: TextSpan(
-                          text: 'IP Address: ${address.$1}',
-                          children: [
-                            TextSpan(
-                              text: address.$2,
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                          style: context.theme.typography.sm,
-                        ),
-                      );
-                    },
-                  ),
-              ] else ...[
-                PopScope(
-                  canPop: false,
-                  onPopInvokedWithResult: (didPop, result) {
-                    files.value = [];
-                  },
-                  child: Expanded(
-                    child: FileDropRegion(
-                      onFileAdd: (fileInfo) {
-                        files.value = [...files.value, fileInfo];
-                      },
-                      child: ListView.builder(
-                        itemCount: files.value.length,
-                        itemBuilder: (context, index) {
-                          final file = files.value[index];
-                          return Padding(
-                            padding: index == 0
-                                ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
-                                : EdgeInsetsGeometry.only(bottom: 8),
-                            child: FileInfoTile(
-                              fileInfo: file,
-                              // fileSize: file.size,
-                              onRemoveTap: () {
-                                files.value = [...files.value]..remove(file);
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                OnlineDevices(
-                  notifier: presenceNotifier,
-                  onTap: (device) async {
-                    sendStateNotifier.value = TransferState.waiting;
-                    Navigator.push<TransferState>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TransferScreen(
-                          transferType: TransferType.send,
-                          speedometerReadingStream:
-                              client.speedometerReadingsStream,
-                          fileNameStream: client.fileNameStream,
-                          transferNotifier: sendStateNotifier,
-                        ),
-                      ),
-                    ).then((value) {
-                      client.reset();
-                      sendStateNotifier.value = TransferState.idle;
-                    });
-
-                    try {
-                      final accpeted = await client.requestUpload(
-                        device.ipAddress,
-                      );
-                      if (!accpeted) {
-                        sendStateNotifier.value = TransferState.failed;
-                        return;
-                      }
-                      sendStateNotifier.value = TransferState.inProgress;
-                      await client.upload(files.value, device.ipAddress);
-                      sendStateNotifier.value = TransferState.completed;
-                    } catch (e) {
-                      sendStateNotifier.value = TransferState.failed;
-                    }
-                  },
-                ),
-              ],
-            ],
-          ),
+          child: (files.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
         ),
       ),
+    );
+  }
+
+  _fileEmptyView() {
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: isDesktop
+                ? DesktopPickerButton(onFileAdd: _onFilePick)
+                : MobilePickerButton(onPick: _onFilePick),
+          ),
+        ),
+        PresenceView(),
+      ],
+    );
+  }
+
+  _fileSelectedView() {
+    return Column(
+      children: [
+        PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            setState(() {
+              files = [];
+            });
+          },
+          child: Expanded(
+            child: FileDropRegion(
+              onFileAdd: (fileInfo) {
+                setState(() {
+                  files = [...files, fileInfo];
+                });
+              },
+              child: ListView.builder(
+                itemCount: files.length,
+                itemBuilder: (context, index) {
+                  final file = files[index];
+                  return Padding(
+                    padding: index == 0
+                        ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
+                        : EdgeInsetsGeometry.only(bottom: 8),
+                    child: FileInfoTile(
+                      fileInfo: file,
+                      // fileSize: file.size,
+                      onRemoveTap: () {
+                        setState(() {
+                          files = [...files]..remove(file);
+                        });
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+
+        OnlineDevices(
+          notifier: presenceNotifier,
+          onTap: (device) async {
+            sendStateNotifier.value = TransferState.waiting;
+            Navigator.push<TransferState>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TransferScreen(
+                  transferType: TransferType.send,
+                  speedometerReadingStream: client.speedometerReadingsStream,
+                  fileNameStream: client.fileNameStream,
+                  transferNotifier: sendStateNotifier,
+                ),
+              ),
+            ).then((value) {
+              client.reset();
+              sendStateNotifier.value = TransferState.idle;
+            });
+
+            try {
+              final accpeted = await client.requestUpload(device.ipAddress);
+              if (!accpeted) {
+                sendStateNotifier.value = TransferState.failed;
+                return;
+              }
+              sendStateNotifier.value = TransferState.inProgress;
+              await client.upload(files, device.ipAddress);
+              sendStateNotifier.value = TransferState.completed;
+            } catch (e) {
+              sendStateNotifier.value = TransferState.failed;
+            }
+          },
+        ),
+      ],
     );
   }
 }

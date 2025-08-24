@@ -11,38 +11,35 @@ class OnlineDevices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: ListenableBuilder(
-          listenable: notifier,
-          builder: (context, child) {
-            if (notifier.devices.isEmpty) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 8,
-                children: [
-                  FProgress.circularIcon(),
-                  Text('Looking for nearby devices...'),
-                ],
-              );
-            }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ListenableBuilder(
+        listenable: notifier,
+        builder: (context, child) {
+          if (notifier.devices.isEmpty) {
             return Row(
-              spacing: 8,
               mainAxisAlignment: MainAxisAlignment.center,
-              children: notifier.devices
-                  .map(
-                    (device) => FButton(
-                      prefix: Icon(FIcons.send),
-                      onPress: () => onTap(device),
-                      child: Text(device.name),
-                    ),
-                  )
-                  .toList(),
+              spacing: 8,
+              children: [
+                FProgress.circularIcon(),
+                Text('Looking for nearby devices...'),
+              ],
             );
-          },
-        ),
+          }
+          return Wrap(
+            spacing: 8,
+            children: notifier.devices
+                .map(
+                  (device) => FButton(
+                    mainAxisSize: MainAxisSize.min,
+                    prefix: Icon(FIcons.send),
+                    onPress: () => onTap(device),
+                    child: Text(device.name),
+                  ),
+                )
+                .toList(),
+          );
+        },
       ),
     );
   }
