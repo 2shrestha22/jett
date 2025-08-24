@@ -1,17 +1,17 @@
 import 'dart:io';
 
-import 'package:jett/model/file_info.dart';
+import 'package:jett/model/resource.dart';
 import 'package:jett/utils/io.dart';
 import 'package:flutter/material.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 class FileDropRegion extends StatelessWidget {
-  final void Function(FileInfo uri) onFileAdd;
+  final void Function(Resource resource) onResourceAdd;
   final Widget child;
 
   const FileDropRegion({
     super.key,
-    required this.onFileAdd,
+    required this.onResourceAdd,
     required this.child,
   });
 
@@ -51,14 +51,19 @@ class FileDropRegion extends StatelessWidget {
           if (dataReader.canProvide(Formats.fileUri)) {
             dataReader.getValue(Formats.fileUri, (value) async {
               if (value != null) {
-                final fileName = value.pathSegments.last;
-                // TODO: check if you can read file in windows using this path
-                // or need to ues toFilePath() method
                 final fileType = await FileSystemEntity.type(value.path);
-                if (fileType == FileSystemEntityType.file) {
-                  // TODO: support folder picking
-                  onFileAdd(FileInfo(name: fileName, uri: value.toString()));
-                }
+
+                // TODO: support folder picking
+                // note: for some file, filetype is not found in mac
+                // but it works after renaming the file in the mac,
+                // weird issue
+                if (fileType == FileSystemEntityType.directory) return;
+                onResourceAdd(
+                  ContentResource(
+                    uri: value.toString(),
+                    name: value.pathSegments.last,
+                  ),
+                );
               }
             });
           }

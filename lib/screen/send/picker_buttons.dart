@@ -1,6 +1,5 @@
 import 'package:jett/model/file_info.dart';
 import 'package:fast_file_picker/fast_file_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
@@ -48,20 +47,5 @@ class _PickerButtonsState extends State<PickerButtons> {
       prefix: pickingFiles ? FProgress.circularIcon() : Icon(FIcons.filePlus),
       child: Text('Select Files'),
     );
-  }
-
-  _onFileLoadHandler(status) {
-    switch (status) {
-      case FilePickerStatus.picking:
-        setState(() {
-          pickingFiles = true;
-        });
-        break;
-      case FilePickerStatus.done:
-        setState(() {
-          pickingFiles = false;
-        });
-        break;
-    }
   }
 }

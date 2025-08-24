@@ -5,19 +5,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:jett/discovery/konst.dart';
-import 'package:jett/model/file_info.dart';
+import 'package:jett/model/resource.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
-import 'package:uri_content/uri_content.dart';
 
 class Client {
   // final _httpClient = HttpClient();
   final _speedometer = Speedometer();
-  final _uriContent = UriContent();
 
   ValueStream<SpeedometerReading?> get speedometerReadingsStream =>
       _speedometer.readingStream;
@@ -48,7 +45,7 @@ class Client {
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> upload(List<FileInfo> files, String ipAddr) async {
+  Future<void> upload(List<Resource> resources, String ipAddr) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
 
@@ -66,38 +63,38 @@ class Client {
     // create a multipart request body stream
     // and add speedometer counting to each file stream
     final requestMultipart = http.MultipartRequest('POST', uri);
-    for (var file in files) {
-      // TODO: in linux and windows URI is null and should be handled
-      // differently using file path
-      final size =
-          await _uriContent.getContentLength(Uri.parse(file.uri!)) ?? 0;
-      totalFileSize += size;
-      final fileStream = _uriContent
-          .getContentStream(Uri.parse(file.uri!), bufferSize: 1024 * 256)
-          .transform(
-            StreamTransformer<Uint8List, Uint8List>.fromHandlers(
-              handleData: (data, sink) {
-                sink.add(data);
-                _fileNameSubject.add(file.name);
-                _speedometer.count(data.length);
-              },
-              handleError: (error, stack, sink) {
-                _speedometer.stop();
-                throw error;
-              },
-              handleDone: (sink) {
-                _speedometer.stop();
-                sink.close();
-              },
-            ),
-          );
+    for (var resource in resources) {
+      final contentLenght = await resource.length();
+
+      if (contentLenght == null) return;
+
+      totalFileSize += contentLenght;
+
+      final contentStream = resource.openRead();
+      final fileStream = contentStream.transform(
+        StreamTransformer<Uint8List, Uint8List>.fromHandlers(
+          handleData: (data, sink) {
+            sink.add(data);
+            _fileNameSubject.add(resource.name);
+            _speedometer.count(data.length);
+          },
+          handleError: (error, stack, sink) {
+            _speedometer.stop();
+            throw error;
+          },
+          handleDone: (sink) {
+            _speedometer.stop();
+            sink.close();
+          },
+        ),
+      );
       requestMultipart.files.add(
         http.MultipartFile(
           'files',
           fileStream,
-          size,
-          filename: file.name,
-          contentType: _getContentType(file.path),
+          contentLenght,
+          filename: resource.name,
+          contentType: _getContentType(resource.mimeType),
         ),
       );
     }
@@ -147,8 +144,7 @@ Future<String> _readResponseAsString(http.StreamedResponse response) {
   return completer.future;
 }
 
-MediaType? _getContentType(String? filePath) {
-  final mimeType = filePath != null ? lookupMimeType(filePath) : null;
+MediaType? _getContentType(String? mimeType) {
   final contentType = mimeType != null ? MediaType.parse(mimeType) : null;
 
   return contentType;

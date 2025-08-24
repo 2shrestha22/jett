@@ -1,14 +1,14 @@
-import 'package:jett/model/file_info.dart';
+import 'package:jett/model/resource.dart';
 import 'package:jett/widgets/drop_region.dart';
 import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 class DesktopPickerButton extends StatelessWidget {
-  final void Function(List<FileInfo> files) onFileAdd;
+  final void Function(List<Resource> resources) onResourceAdd;
 
   // it is called multiple times when files are drag and dropped
-  const DesktopPickerButton({super.key, required this.onFileAdd});
+  const DesktopPickerButton({super.key, required this.onResourceAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -17,18 +17,21 @@ class DesktopPickerButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: FileDropRegion(
-        onFileAdd: (fileInfo) {
-          onFileAdd([fileInfo]);
+        onResourceAdd: (fileResource) {
+          onResourceAdd([fileResource]);
         },
         child: FButton.raw(
           onPress: () async {
             final result = await FastFilePicker.pickMultipleFiles();
 
             if (result != null && result.isNotEmpty) {
-              final fileInfoList = result
-                  .map((e) => FileInfo(name: e.name, path: e.path, uri: e.uri))
-                  .toList();
-              onFileAdd(fileInfoList);
+              final resourceList = result.map((e) {
+                if (e.uri != null) {
+                  return ContentResource(uri: e.uri!, name: e.name);
+                }
+                return FileResource(e.path!);
+              }).toList();
+              onResourceAdd(resourceList);
             }
           },
           child: Container(

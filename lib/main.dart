@@ -25,7 +25,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: appName,
-      color: Colors.black,
+      // color: Colors.black,
       builder: (context, child) =>
           FTheme(data: FThemes.zinc.light, child: child!),
       home: HomeScreen(),

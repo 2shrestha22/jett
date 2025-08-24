@@ -1,5 +1,5 @@
-import 'package:jett/model/file_info.dart';
 import 'package:jett/utils/data.dart' show formatFileSize;
+import 'package:jett/model/resource.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/assets.dart';
 import 'package:forui/widgets/tile.dart';
@@ -7,13 +7,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
 class FileInfoTile extends StatefulWidget {
-  final FileInfo fileInfo;
+  final Resource resource;
   final int? fileSize;
   final VoidCallback onRemoveTap;
 
   const FileInfoTile({
     super.key,
-    required this.fileInfo,
+    required this.resource,
     this.fileSize,
     required this.onRemoveTap,
   });
@@ -30,7 +30,7 @@ class _FileInfoTileState extends State<FileInfoTile> {
   void initState() {
     super.initState();
     fileType = p
-        .extension(widget.fileInfo.name)
+        .extension(widget.resource.name)
         .replaceFirst('.', '')
         .toUpperCase();
 
@@ -74,7 +74,7 @@ class _FileInfoTileState extends State<FileInfoTile> {
   Widget build(BuildContext context) {
     return FTile(
       prefix: Icon(icon, color: Colors.blue),
-      title: Text(widget.fileInfo.name, overflow: TextOverflow.ellipsis),
+      title: Text(widget.resource.name, overflow: TextOverflow.ellipsis),
       subtitle: Row(
         children: [
           Text(fileType),

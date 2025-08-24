@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:jett/core/hooks.dart';
+import 'package:file_share_intent/file_share_intent.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
 import 'package:jett/model/device.dart';
-import 'package:jett/model/file_info.dart';
+import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
-import 'package:jett/screen/send/picker_buttons.dart';
 import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:jett/screen/transfer_screen.dart';
 import 'package:jett/transfer/client.dart';
@@ -19,12 +18,10 @@ import 'package:jett/widgets/desktop_picker_button.dart';
 import 'package:jett/widgets/drop_region.dart';
 import 'package:jett/widgets/file_view.dart';
 import 'package:jett/widgets/mobile_picker_button.dart';
-import 'package:jett/widgets/presence_icon.dart';
 import 'package:jett/widgets/presence_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
-import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 class HomeScreen extends StatefulHookWidget {
   const HomeScreen({super.key});
@@ -45,7 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late final Server server;
   final Client client = Client();
 
-  List<FileInfo> files = [];
+  List<Resource> resources = [];
+
+  late StreamSubscription<List<SharedMediaFile>> _intentSub;
 
   @override
   void initState() {
@@ -55,6 +54,34 @@ class _HomeScreenState extends State<HomeScreen> {
     _initListener();
 
     _initServer();
+
+    _initShareIntenet();
+  }
+
+  _initShareIntenet() {
+    if (isDesktop) return;
+
+    // shared when app is in closed state
+    FileShareIntent.instance.getInitialMedia().then((value) {
+      setState(() {
+        resources.clear();
+        resources.addAll(value.map((e) => ContentResource(uri: e.path)));
+      });
+      unawaited(FileShareIntent.instance.reset());
+    });
+
+    // shared when app is in foreground state
+    _intentSub = FileShareIntent.instance.getMediaStream().listen(
+      (value) {
+        setState(() {
+          resources.clear();
+          resources.addAll(value.map((e) => ContentResource(uri: e.path)));
+        });
+      },
+      onError: (err) {
+        log("getIntentDataStream error: $err");
+      },
+    );
   }
 
   Future<void> _initBroadcaster() async {
@@ -159,9 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
     presenceBroadcaster.startPresenceAnnounce();
   }
 
-  void _onFilePick(List<FileInfo> pickedFiles) {
+  void _onFilePick(List<Resource> pickedResources) {
     setState(() {
-      files = [...files, ...pickedFiles];
+      resources.addAll(pickedResources);
     });
   }
 
@@ -171,11 +198,11 @@ class _HomeScreenState extends State<HomeScreen> {
       header: FHeader(
         title: Text(appName),
         suffixes: [
-          if (files.isNotEmpty)
+          if (resources.isNotEmpty)
             FButton.icon(
               onPress: () {
                 setState(() {
-                  files = [];
+                  resources.clear();
                 });
               },
               child: Icon(FIcons.x),
@@ -185,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
-          child: (files.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
+          child: (resources.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
         ),
       ),
     );
@@ -197,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: Center(
             child: isDesktop
-                ? DesktopPickerButton(onFileAdd: _onFilePick)
+                ? DesktopPickerButton(onResourceAdd: _onFilePick)
                 : MobilePickerButton(onPick: _onFilePick),
           ),
         ),
@@ -213,30 +240,30 @@ class _HomeScreenState extends State<HomeScreen> {
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
             setState(() {
-              files = [];
+              resources.clear();
             });
           },
           child: Expanded(
             child: FileDropRegion(
-              onFileAdd: (fileInfo) {
+              onResourceAdd: (fileInfo) {
                 setState(() {
-                  files = [...files, fileInfo];
+                  resources.add(fileInfo);
                 });
               },
               child: ListView.builder(
-                itemCount: files.length,
+                itemCount: resources.length,
                 itemBuilder: (context, index) {
-                  final file = files[index];
+                  final resource = resources[index];
                   return Padding(
                     padding: index == 0
                         ? EdgeInsetsGeometry.fromLTRB(0, 8, 0, 8)
                         : EdgeInsetsGeometry.only(bottom: 8),
                     child: FileInfoTile(
-                      fileInfo: file,
+                      resource: resource,
                       // fileSize: file.size,
                       onRemoveTap: () {
                         setState(() {
-                          files = [...files]..remove(file);
+                          resources.remove(resource);
                         });
                       },
                     ),
@@ -273,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
               sendStateNotifier.value = TransferState.inProgress;
-              await client.upload(files, device.ipAddress);
+              await client.upload(resources, device.ipAddress);
               sendStateNotifier.value = TransferState.completed;
             } catch (e) {
               sendStateNotifier.value = TransferState.failed;
@@ -282,5 +309,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _intentSub.cancel();
+    super.dispose();
   }
 }
