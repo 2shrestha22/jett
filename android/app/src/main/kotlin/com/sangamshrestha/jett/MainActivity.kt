@@ -1,4 +1,4 @@
-package com.example.jett
+package com.sangamshrestha.jett
 
 import io.flutter.embedding.android.FlutterActivity
 

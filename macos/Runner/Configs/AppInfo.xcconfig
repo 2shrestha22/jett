@@ -8,7 +8,7 @@
 PRODUCT_NAME = jett
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.jett
+PRODUCT_BUNDLE_IDENTIFIER = com.sangamshrestha.jett
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.sangamshrestha. All rights reserved.
