@@ -1,4 +1,4 @@
-import 'package:anysend/model/file_info.dart';
+import 'package:jett/model/file_info.dart';
 import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';

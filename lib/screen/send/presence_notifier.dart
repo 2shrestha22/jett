@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:anysend/discovery/konst.dart';
-import 'package:anysend/model/device.dart';
+import 'package:jett/discovery/konst.dart';
+import 'package:jett/model/device.dart';
 import 'package:flutter/widgets.dart';
 
 class PresenceNotifier extends ChangeNotifier {

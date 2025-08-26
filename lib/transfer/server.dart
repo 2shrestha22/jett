@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:anysend/discovery/konst.dart';
-import 'package:anysend/transfer/speedometer.dart';
-import 'package:anysend/utils/save_path.dart';
+import 'package:jett/discovery/konst.dart';
+import 'package:jett/transfer/speedometer.dart';
+import 'package:jett/utils/save_path.dart';
 import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shelf/shelf.dart';
