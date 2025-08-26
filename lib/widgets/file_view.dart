@@ -1,5 +1,5 @@
-import 'package:anysend/model/file_info.dart';
-import 'package:anysend/utils/data.dart' show formatFileSize;
+import 'package:jett/model/file_info.dart';
+import 'package:jett/utils/data.dart' show formatFileSize;
 import 'package:flutter/material.dart';
 import 'package:forui/assets.dart';
 import 'package:forui/widgets/tile.dart';

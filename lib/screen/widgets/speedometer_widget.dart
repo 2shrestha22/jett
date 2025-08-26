@@ -1,6 +1,6 @@
-import 'package:anysend/transfer/speedometer.dart';
-import 'package:anysend/utils/data.dart';
-import 'package:anysend/widgets/transfer_progress.dart';
+import 'package:jett/transfer/speedometer.dart';
+import 'package:jett/utils/data.dart';
+import 'package:jett/widgets/transfer_progress.dart';
 import 'package:flutter/material.dart';
 
 class SpeedometerWidget extends StatelessWidget {

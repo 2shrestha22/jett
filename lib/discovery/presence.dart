@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:anysend/model/message.dart';
-import 'package:anysend/utils/device_info.dart';
-import 'package:anysend/utils/network.dart';
+import 'package:jett/model/message.dart';
+import 'package:jett/utils/device_info.dart';
+import 'package:jett/utils/network.dart';
 
 import 'konst.dart';
 

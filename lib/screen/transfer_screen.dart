@@ -1,9 +1,9 @@
-import 'package:anysend/core/hooks.dart';
-import 'package:anysend/model/transfer_status.dart';
-import 'package:anysend/screen/widgets/file_info_stream_builder.dart';
-import 'package:anysend/screen/widgets/speedometer_widget.dart';
-import 'package:anysend/transfer/speedometer.dart';
-import 'package:anysend/utils/data.dart';
+import 'package:jett/core/hooks.dart';
+import 'package:jett/model/transfer_status.dart';
+import 'package:jett/screen/widgets/file_info_stream_builder.dart';
+import 'package:jett/screen/widgets/speedometer_widget.dart';
+import 'package:jett/transfer/speedometer.dart';
+import 'package:jett/utils/data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';

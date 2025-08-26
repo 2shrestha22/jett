@@ -1,4 +1,4 @@
-import 'package:anysend/model/file_info.dart';
+import 'package:jett/model/file_info.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 part 'transfer_status.mapper.dart';
 

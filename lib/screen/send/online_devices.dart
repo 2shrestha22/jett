@@ -1,5 +1,5 @@
-import 'package:anysend/model/device.dart';
-import 'package:anysend/screen/send/presence_notifier.dart';
+import 'package:jett/model/device.dart';
+import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 

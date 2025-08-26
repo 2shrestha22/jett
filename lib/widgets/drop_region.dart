@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:anysend/model/file_info.dart';
-import 'package:anysend/utils/io.dart';
+import 'package:jett/model/file_info.dart';
+import 'package:jett/utils/io.dart';
 import 'package:flutter/material.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 

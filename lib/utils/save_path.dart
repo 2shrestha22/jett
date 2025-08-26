@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:anysend/utils/package_info.dart';
+import 'package:jett/utils/package_info.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:path/path.dart' as path;

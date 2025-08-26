@@ -1,7 +1,7 @@
-import 'package:anysend/discovery/konst.dart';
-import 'package:anysend/screen/home_screen.dart';
-import 'package:anysend/utils/device_info.dart';
-import 'package:anysend/utils/package_info.dart';
+import 'package:jett/discovery/konst.dart';
+import 'package:jett/screen/home_screen.dart';
+import 'package:jett/utils/device_info.dart';
+import 'package:jett/utils/package_info.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 

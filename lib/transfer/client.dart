@@ -4,9 +4,9 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:anysend/discovery/konst.dart';
-import 'package:anysend/model/file_info.dart';
-import 'package:anysend/transfer/speedometer.dart';
+import 'package:jett/discovery/konst.dart';
+import 'package:jett/model/file_info.dart';
+import 'package:jett/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';

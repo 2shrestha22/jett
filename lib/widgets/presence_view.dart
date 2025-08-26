@@ -1,6 +1,6 @@
-import 'package:anysend/core/hooks.dart';
-import 'package:anysend/utils/network.dart';
-import 'package:anysend/widgets/presence_icon.dart';
+import 'package:jett/core/hooks.dart';
+import 'package:jett/utils/network.dart';
+import 'package:jett/widgets/presence_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
