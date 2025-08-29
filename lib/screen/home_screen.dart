@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   late final Server server;
   final Client client = Client();
 
-  List<Resource> resources = [];
+  final List<Resource> resources = [];
 
   @override
   void initState() {
@@ -58,9 +58,10 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
 
   _onShareIntentReceived(List<PlatformFile> files) {
     setState(() {
-      resources = files
-          .map((e) => ContentResource(uri: e.uri, name: e.name))
-          .toList();
+      resources.clear();
+      resources.addAll(
+        files.map((e) => ContentResource(uri: e.uri, name: e.name)),
+      );
     });
   }
 
