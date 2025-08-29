@@ -1,0 +1,1 @@
+dart run pigeon --input pigeons/input.dart

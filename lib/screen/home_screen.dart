@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:file_share_intent/file_share_intent.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
+import 'package:jett/messages.g.dart';
 import 'package:jett/model/device.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
 import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:jett/screen/transfer_screen.dart';
+import 'package:jett/screen/widgets/plugin_check_widget.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/utils/io.dart';
@@ -30,7 +31,7 @@ class HomeScreen extends StatefulHookWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   final presenceBroadcaster = PresenceBroadcaster();
 
   final presenceListener = PresenceListener();
@@ -44,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Resource> resources = [];
 
-  late StreamSubscription<List<SharedMediaFile>> _intentSub;
+  // late StreamSubscription<List<SharedMediaFile>> _intentSub;
 
   @override
   void initState() {
@@ -54,35 +55,52 @@ class _HomeScreenState extends State<HomeScreen> {
     _initListener();
 
     _initServer();
-
-    _initShareIntenet();
-  }
-
-  _initShareIntenet() {
-    if (isDesktop) return;
-
-    // shared when app is in closed state
-    FileShareIntent.instance.getInitialMedia().then((value) {
+    JettFlutterApi.setUp(this);
+    JettApi().getInitialFiles().then((value) {
       setState(() {
-        resources.clear();
-        resources.addAll(value.map((e) => ContentResource(uri: e.path)));
+        resources = value
+            .map((e) => ContentResource(uri: e.uri, name: e.name))
+            .toList();
       });
-      unawaited(FileShareIntent.instance.reset());
     });
 
-    // shared when app is in foreground state
-    _intentSub = FileShareIntent.instance.getMediaStream().listen(
-      (value) {
-        setState(() {
-          resources.clear();
-          resources.addAll(value.map((e) => ContentResource(uri: e.path)));
-        });
-      },
-      onError: (err) {
-        log("getIntentDataStream error: $err");
-      },
-    );
+    // _initShareIntenet();
   }
+
+  @override
+  void onIntent(List<PlatformFile> files) {
+    setState(() {
+      resources = files
+          .map((e) => ContentResource(uri: e.uri, name: e.name))
+          .toList();
+    });
+  }
+
+  // _initShareIntenet() {
+  //   if (isDesktop) return;
+
+  //   // shared when app is in closed state
+  //   FileShareIntent.instance.getInitialMedia().then((value) {
+  //     setState(() {
+  //       resources.clear();
+  //       resources.addAll(value.map((e) => ContentResource(uri: e.path)));
+  //     });
+  //     unawaited(FileShareIntent.instance.reset());
+  //   });
+
+  //   // shared when app is in foreground state
+  //   _intentSub = FileShareIntent.instance.getMediaStream().listen(
+  //     (value) {
+  //       setState(() {
+  //         resources.clear();
+  //         resources.addAll(value.map((e) => ContentResource(uri: e.path)));
+  //       });
+  //     },
+  //     onError: (err) {
+  //       log("getIntentDataStream error: $err");
+  //     },
+  //   );
+  // }
 
   Future<void> _initBroadcaster() async {
     await presenceBroadcaster.init();
@@ -229,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         PresenceView(),
+        PluginCheckWidget(),
       ],
     );
   }
@@ -313,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Future<void> dispose() async {
-    await _intentSub.cancel();
+    // await _intentSub.cancel();
     super.dispose();
   }
 }
