@@ -163,8 +163,6 @@ class _PigeonCodec extends StandardMessageCodec {
   }
 }
 
-const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(_PigeonCodec());
-
 class JettApi {
   /// Constructor for [JettApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
@@ -234,18 +232,6 @@ class JettApi {
     }
   }
 }
-
-Stream<List> files( {String instanceName = ''}) {
-  if (instanceName.isNotEmpty) {
-    instanceName = '.$instanceName';
-  }
-  final EventChannel filesChannel =
-      EventChannel('dev.flutter.pigeon.com.sangamshrestha.jett.JettEventChannelApi.files$instanceName', pigeonMethodCodec);
-  return filesChannel.receiveBroadcastStream().map((dynamic event) {
-    return event as List;
-  });
-}
-    
 
 abstract class JettFlutterApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();

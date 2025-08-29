@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
@@ -45,8 +44,6 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
 
   List<Resource> resources = [];
 
-  // late StreamSubscription<List<SharedMediaFile>> _intentSub;
-
   @override
   void initState() {
     super.initState();
@@ -55,20 +52,11 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     _initListener();
 
     _initServer();
-    JettFlutterApi.setUp(this);
-    JettApi().getInitialFiles().then((value) {
-      setState(() {
-        resources = value
-            .map((e) => ContentResource(uri: e.uri, name: e.name))
-            .toList();
-      });
-    });
 
-    // _initShareIntenet();
+    _initShareIntenet();
   }
 
-  @override
-  void onIntent(List<PlatformFile> files) {
+  _onShareIntentReceived(List<PlatformFile> files) {
     setState(() {
       resources = files
           .map((e) => ContentResource(uri: e.uri, name: e.name))
@@ -76,31 +64,15 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     });
   }
 
-  // _initShareIntenet() {
-  //   if (isDesktop) return;
+  _initShareIntenet() {
+    if (isDesktop) return;
 
-  //   // shared when app is in closed state
-  //   FileShareIntent.instance.getInitialMedia().then((value) {
-  //     setState(() {
-  //       resources.clear();
-  //       resources.addAll(value.map((e) => ContentResource(uri: e.path)));
-  //     });
-  //     unawaited(FileShareIntent.instance.reset());
-  //   });
+    JettFlutterApi.setUp(this);
+    JettApi().getInitialFiles().then(_onShareIntentReceived);
+  }
 
-  //   // shared when app is in foreground state
-  //   _intentSub = FileShareIntent.instance.getMediaStream().listen(
-  //     (value) {
-  //       setState(() {
-  //         resources.clear();
-  //         resources.addAll(value.map((e) => ContentResource(uri: e.path)));
-  //       });
-  //     },
-  //     onError: (err) {
-  //       log("getIntentDataStream error: $err");
-  //     },
-  //   );
-  // }
+  @override
+  void onIntent(List<PlatformFile> files) => _onShareIntentReceived(files);
 
   Future<void> _initBroadcaster() async {
     await presenceBroadcaster.init();

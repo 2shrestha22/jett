@@ -15,11 +15,6 @@ abstract class JettApi {
   List<PlatformFile> getInitialFiles();
 }
 
-@EventChannelApi()
-abstract class JettEventChannelApi {
-  List<PlatformFile> files();
-}
-
 @FlutterApi()
 abstract class JettFlutterApi {
   void onIntent(List<PlatformFile> files);

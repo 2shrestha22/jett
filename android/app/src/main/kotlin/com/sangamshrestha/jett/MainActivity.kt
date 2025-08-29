@@ -13,7 +13,7 @@ import io.flutter.embedding.engine.FlutterEngine
 class MainActivity : FlutterActivity(), JettApi {
 
     private var _initialFiles: MutableList<PlatformFile> = mutableListOf()
-    lateinit var flutterApi: JettFlutterApi
+    private lateinit var flutterApi: JettFlutterApi
 
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

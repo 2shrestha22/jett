@@ -172,8 +172,6 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
   }
 }
 
-val MessagesPigeonMethodCodec = StandardMethodCodec(MessagesPigeonCodec())
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface JettApi {
   fun getPlatformVersion(): Version
@@ -221,56 +219,6 @@ interface JettApi {
     }
   }
 }
-
-private class MessagesPigeonStreamHandler<T>(
-    val wrapper: MessagesPigeonEventChannelWrapper<T>
-) : EventChannel.StreamHandler {
-  var pigeonSink: PigeonEventSink<T>? = null
-
-  override fun onListen(p0: Any?, sink: EventChannel.EventSink) {
-    pigeonSink = PigeonEventSink<T>(sink)
-    wrapper.onListen(p0, pigeonSink!!)
-  }
-
-  override fun onCancel(p0: Any?) {
-    pigeonSink = null
-    wrapper.onCancel(p0)
-  }
-}
-
-interface MessagesPigeonEventChannelWrapper<T> {
-  open fun onListen(p0: Any?, sink: PigeonEventSink<T>) {}
-
-  open fun onCancel(p0: Any?) {}
-}
-
-class PigeonEventSink<T>(private val sink: EventChannel.EventSink) {
-  fun success(value: T) {
-    sink.success(value)
-  }
-
-  fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-    sink.error(errorCode, errorMessage, errorDetails)
-  }
-
-  fun endOfStream() {
-    sink.endOfStream()
-  }
-}
-      
-abstract class FilesStreamHandler : MessagesPigeonEventChannelWrapper<List<PlatformFile>> {
-  companion object {
-    fun register(messenger: BinaryMessenger, streamHandler: FilesStreamHandler, instanceName: String = "") {
-      var channelName: String = "dev.flutter.pigeon.com.sangamshrestha.jett.JettEventChannelApi.files"
-      if (instanceName.isNotEmpty()) {
-        channelName += ".$instanceName"
-      }
-      val internalStreamHandler = MessagesPigeonStreamHandler<List<PlatformFile>>(streamHandler)
-      EventChannel(messenger, channelName, MessagesPigeonMethodCodec).setStreamHandler(internalStreamHandler)
-    }
-  }
-}
-      
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
 class JettFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
   companion object {
