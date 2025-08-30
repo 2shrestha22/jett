@@ -48,7 +48,7 @@ class _FileInfoTileState extends State<FileInfoTile> {
       case 'MP4':
       case 'AVI':
       case 'MOV':
-        icon = FIcons.fileVideo;
+        icon = FIcons.fileVideoCamera;
         break;
       case 'ZIP':
       case 'RAR':

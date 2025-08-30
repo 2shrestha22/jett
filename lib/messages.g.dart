@@ -131,6 +131,78 @@ class PlatformFile {
 ;
 }
 
+class APKInfo {
+  APKInfo({
+    required this.name,
+    required this.packageName,
+    required this.fileName,
+    required this.isSystemApp,
+    required this.isSplitApk,
+    required this.icon,
+    required this.contentUri,
+  });
+
+  String name;
+
+  String packageName;
+
+  String fileName;
+
+  bool isSystemApp;
+
+  bool isSplitApk;
+
+  Uint8List icon;
+
+  /// Content URI
+  String contentUri;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      name,
+      packageName,
+      fileName,
+      isSystemApp,
+      isSplitApk,
+      icon,
+      contentUri,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static APKInfo decode(Object result) {
+    result as List<Object?>;
+    return APKInfo(
+      name: result[0]! as String,
+      packageName: result[1]! as String,
+      fileName: result[2]! as String,
+      isSystemApp: result[3]! as bool,
+      isSplitApk: result[4]! as bool,
+      icon: result[5]! as Uint8List,
+      contentUri: result[6]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! APKInfo || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList())
+;
+}
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -145,6 +217,9 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PlatformFile) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
+    }    else if (value is APKInfo) {
+      buffer.putUint8(131);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -157,6 +232,8 @@ class _PigeonCodec extends StandardMessageCodec {
         return Version.decode(readValue(buffer)!);
       case 130: 
         return PlatformFile.decode(readValue(buffer)!);
+      case 131: 
+        return APKInfo.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -229,6 +306,34 @@ class JettApi {
       );
     } else {
       return (pigeonVar_replyList[0] as List<Object?>?)!.cast<PlatformFile>();
+    }
+  }
+
+  Future<List<APKInfo>> getAPKs() async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<APKInfo>();
     }
   }
 }

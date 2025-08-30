@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:jett/model/resource.dart';
 import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/widgets/button.dart';
 import 'package:forui_assets/forui_assets.dart';
+import 'package:jett/screen/apk_screen.dart';
 
 class MobilePickerButton extends StatelessWidget {
   final void Function(List<Resource> resources) onPick;
@@ -11,24 +14,45 @@ class MobilePickerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FButton(
+    return Column(
+      spacing: 8,
       mainAxisSize: MainAxisSize.min,
-      onPress: () async {
-        final result = await FastFilePicker.pickMultipleFiles();
+      children: [
+        FButton(
+          mainAxisSize: MainAxisSize.min,
+          onPress: () async {
+            final result = await FastFilePicker.pickMultipleFiles();
 
-        if (result != null && result.isNotEmpty) {
-          final resourceList = result.map((e) {
-            if (e.uri != null) {
-              return ContentResource(uri: e.uri!, name: e.name);
-            } else {
-              return FileResource(e.path!);
+            if (result != null && result.isNotEmpty) {
+              final resourceList = result.map((e) {
+                if (e.uri != null) {
+                  return ContentResource(uri: e.uri!, name: e.name);
+                } else {
+                  return FileResource(e.path!);
+                }
+              }).toList();
+              onPick(resourceList);
             }
-          }).toList();
-          onPick(resourceList);
-        }
-      },
-      prefix: Icon(FIcons.file),
-      child: Text('Select Files'),
+          },
+          prefix: Icon(FIcons.file),
+          child: Text('Select Files'),
+        ),
+        if (Platform.isAndroid)
+          FButton(
+            mainAxisSize: MainAxisSize.min,
+            onPress: () async {
+              final apkResources = await Navigator.push<List<ContentResource>?>(
+                context,
+                MaterialPageRoute(builder: (context) => ApkScreen()),
+              );
+              if (apkResources?.isEmpty ?? true) return;
+
+              onPick(apkResources!);
+            },
+            prefix: Icon(FIcons.file),
+            child: Text('Select APKs'),
+          ),
+      ],
     );
   }
 }

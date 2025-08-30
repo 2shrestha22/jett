@@ -141,6 +141,53 @@ data class PlatformFile (
 
   override fun hashCode(): Int = toList().hashCode()
 }
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class APKInfo (
+  val name: String,
+  val packageName: String,
+  val fileName: String,
+  val isSystemApp: Boolean,
+  val isSplitApk: Boolean,
+  val icon: ByteArray,
+  /** Content URI */
+  val contentUri: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): APKInfo {
+      val name = pigeonVar_list[0] as String
+      val packageName = pigeonVar_list[1] as String
+      val fileName = pigeonVar_list[2] as String
+      val isSystemApp = pigeonVar_list[3] as Boolean
+      val isSplitApk = pigeonVar_list[4] as Boolean
+      val icon = pigeonVar_list[5] as ByteArray
+      val contentUri = pigeonVar_list[6] as String
+      return APKInfo(name, packageName, fileName, isSystemApp, isSplitApk, icon, contentUri)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      name,
+      packageName,
+      fileName,
+      isSystemApp,
+      isSplitApk,
+      icon,
+      contentUri,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is APKInfo) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MessagesPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
 private open class MessagesPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -152,6 +199,11 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
       130.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PlatformFile.fromList(it)
+        }
+      }
+      131.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          APKInfo.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -167,6 +219,10 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(130)
         writeValue(stream, value.toList())
       }
+      is APKInfo -> {
+        stream.write(131)
+        writeValue(stream, value.toList())
+      }
       else -> super.writeValue(stream, value)
     }
   }
@@ -176,6 +232,7 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 interface JettApi {
   fun getPlatformVersion(): Version
   fun getInitialFiles(): List<PlatformFile>
+  fun getAPKs(): List<APKInfo>
 
   companion object {
     /** The codec used by JettApi. */
@@ -186,6 +243,7 @@ interface JettApi {
     @JvmOverloads
     fun setUp(binaryMessenger: BinaryMessenger, api: JettApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      val taskQueue = binaryMessenger.makeBackgroundTaskQueue()
       run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getPlatformVersion$separatedMessageChannelSuffix", codec)
         if (api != null) {
@@ -207,6 +265,21 @@ interface JettApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.getInitialFiles())
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs$separatedMessageChannelSuffix", codec, taskQueue)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.getAPKs())
             } catch (exception: Throwable) {
               MessagesPigeonUtils.wrapError(exception)
             }

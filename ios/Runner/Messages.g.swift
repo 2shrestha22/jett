@@ -190,6 +190,56 @@ struct PlatformFile: Hashable {
   }
 }
 
+/// Generated class from Pigeon that represents data sent in messages.
+struct APKInfo: Hashable {
+  var name: String
+  var packageName: String
+  var fileName: String
+  var isSystemApp: Bool
+  var isSplitApk: Bool
+  var icon: FlutterStandardTypedData
+  /// Content URI
+  var contentUri: String
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> APKInfo? {
+    let name = pigeonVar_list[0] as! String
+    let packageName = pigeonVar_list[1] as! String
+    let fileName = pigeonVar_list[2] as! String
+    let isSystemApp = pigeonVar_list[3] as! Bool
+    let isSplitApk = pigeonVar_list[4] as! Bool
+    let icon = pigeonVar_list[5] as! FlutterStandardTypedData
+    let contentUri = pigeonVar_list[6] as! String
+
+    return APKInfo(
+      name: name,
+      packageName: packageName,
+      fileName: fileName,
+      isSystemApp: isSystemApp,
+      isSplitApk: isSplitApk,
+      icon: icon,
+      contentUri: contentUri
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      name,
+      packageName,
+      fileName,
+      isSystemApp,
+      isSplitApk,
+      icon,
+      contentUri,
+    ]
+  }
+  static func == (lhs: APKInfo, rhs: APKInfo) -> Bool {
+    return deepEqualsMessages(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashMessages(value: toList(), hasher: &hasher)
+  }
+}
+
 private class MessagesPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -197,6 +247,8 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
       return Version.fromList(self.readValue() as! [Any?])
     case 130:
       return PlatformFile.fromList(self.readValue() as! [Any?])
+    case 131:
+      return APKInfo.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -210,6 +262,9 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? PlatformFile {
       super.writeByte(130)
+      super.writeValue(value.toList())
+    } else if let value = value as? APKInfo {
+      super.writeByte(131)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -235,6 +290,7 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 protocol JettApi {
   func getPlatformVersion() throws -> Version
   func getInitialFiles() throws -> [PlatformFile]
+  func getAPKs() throws -> [APKInfo]
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -243,6 +299,11 @@ class JettApiSetup {
   /// Sets up an instance of `JettApi` to handle messages through the `binaryMessenger`.
   static func setUp(binaryMessenger: FlutterBinaryMessenger, api: JettApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+    #if os(iOS)
+      let taskQueue = binaryMessenger.makeBackgroundTaskQueue?()
+    #else
+      let taskQueue: FlutterTaskQueue? = nil
+    #endif
     let getPlatformVersionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getPlatformVersion\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       getPlatformVersionChannel.setMessageHandler { _, reply in
@@ -268,6 +329,21 @@ class JettApiSetup {
       }
     } else {
       getInitialFilesChannel.setMessageHandler(nil)
+    }
+    let getAPKsChannel = taskQueue == nil
+      ? FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+      : FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec, taskQueue: taskQueue)
+    if let api = api {
+      getAPKsChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.getAPKs()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      getAPKsChannel.setMessageHandler(nil)
     }
   }
 }

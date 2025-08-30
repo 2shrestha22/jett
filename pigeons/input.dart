@@ -13,6 +13,9 @@ import 'package:pigeon/pigeon.dart';
 abstract class JettApi {
   Version getPlatformVersion();
   List<PlatformFile> getInitialFiles();
+
+  @TaskQueue(type: TaskQueueType.serialBackgroundThread)
+  List<APKInfo> getAPKs();
 }
 
 @FlutterApi()
@@ -30,4 +33,26 @@ class PlatformFile {
   final String uri;
   final String? name;
   final int? size;
+}
+
+class APKInfo {
+  final String name;
+  final String packageName;
+  final String fileName;
+  final bool isSystemApp;
+  final bool isSplitApk;
+  final Uint8List icon;
+
+  /// Content URI
+  final String contentUri;
+
+  APKInfo(
+    this.name,
+    this.packageName,
+    this.fileName,
+    this.isSystemApp,
+    this.isSplitApk,
+    this.icon,
+    this.contentUri,
+  );
 }

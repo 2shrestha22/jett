@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     _initShareIntenet();
   }
 
-  _onShareIntentReceived(List<PlatformFile> files) {
+  void _onShareIntentReceived(List<PlatformFile> files) {
     setState(() {
       resources.clear();
       resources.addAll(
@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     });
   }
 
-  _initShareIntenet() {
+  void _initShareIntenet() {
     if (isDesktop) return;
 
     JettFlutterApi.setUp(this);
@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     presenceBroadcaster.startPresenceAnnounce();
   }
 
-  _initListener() async {
+  Future<void> _initListener() async {
     await presenceListener.init();
     presenceListener.startListening(_notifierUpdateCallback);
   }
@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     );
   }
 
-  _initServer() async {
+  Future<void> _initServer() async {
     server = Server(
       onRequest: _onRequestHandler,
       onDownloadStart: _onDownloadStartHandler,
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     );
   }
 
-  _fileEmptyView() {
+  Column _fileEmptyView() {
     return Column(
       children: [
         Expanded(
@@ -225,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     );
   }
 
-  _fileSelectedView() {
+  Column _fileSelectedView() {
     return Column(
       children: [
         PopScope(

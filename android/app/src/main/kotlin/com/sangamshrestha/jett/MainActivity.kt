@@ -1,14 +1,24 @@
 package com.sangamshrestha.jett
 
+import APKInfo
 import JettApi
 import JettFlutterApi
 import PlatformFile
 import Version
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import java.io.ByteArrayOutputStream
+import java.io.File
 
 class MainActivity : FlutterActivity(), JettApi {
 
@@ -43,6 +53,38 @@ class MainActivity : FlutterActivity(), JettApi {
         return filesToReturn
     }
 
+    override fun getAPKs(): List<APKInfo> {
+        val apps = packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
+
+        return apps.map { app ->
+            val drawable = packageManager.getApplicationIcon(app)
+            val stream = ByteArrayOutputStream()
+            drawable.toBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+            val iconBytes = stream.toByteArray()
+
+            val isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
+            val isSplitApk = !app.splitSourceDirs.isNullOrEmpty()
+            val apkFile = File(app.sourceDir)
+            val fileName = apkFile.name
+            // Convert to content:// URI using FileProvider
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${applicationContext.packageName}.fileprovider",
+                apkFile)
+
+            APKInfo(
+                app.loadLabel(packageManager).toString(),
+                app.packageName,
+                fileName,
+                isSystemApp,
+                isSplitApk,
+                iconBytes,
+                apkUri.toString()
+            )
+        }
+    }
+
     private fun handleIntent(intent: Intent?, isOnCreate: Boolean) {
         if (intent == null || intent.action == null || intent.type == null) {
             return
@@ -73,6 +115,5 @@ class MainActivity : FlutterActivity(), JettApi {
             PlatformFile(it.toString(), name = details.first, size = details.second)
         }
     }
-
 
 }
