@@ -5,7 +5,7 @@ import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/widgets/button.dart';
 import 'package:forui_assets/forui_assets.dart';
-import 'package:jett/screen/apk_screen.dart';
+import 'package:jett/screen/apk_picker_screen.dart';
 
 class MobilePickerButton extends StatelessWidget {
   final void Function(List<Resource> resources) onPick;
@@ -43,7 +43,7 @@ class MobilePickerButton extends StatelessWidget {
             onPress: () async {
               final apkResources = await Navigator.push<List<ContentResource>?>(
                 context,
-                MaterialPageRoute(builder: (context) => ApkScreen()),
+                MaterialPageRoute(builder: (context) => ApkPickerScreen()),
               );
               if (apkResources?.isEmpty ?? true) return;
 

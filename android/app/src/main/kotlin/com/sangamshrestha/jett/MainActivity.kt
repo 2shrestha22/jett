@@ -53,36 +53,42 @@ class MainActivity : FlutterActivity(), JettApi {
         return filesToReturn
     }
 
-    override fun getAPKs(): List<APKInfo> {
-        val apps = packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
+    override fun getAPKs(withSystemApp: Boolean): List<APKInfo> {
+        val apps =
+            packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
 
-        return apps.map { app ->
-            val drawable = packageManager.getApplicationIcon(app)
-            val stream = ByteArrayOutputStream()
-            drawable.toBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
-            val iconBytes = stream.toByteArray()
-
+        return apps.mapNotNull { app ->
             val isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-
             val isSplitApk = !app.splitSourceDirs.isNullOrEmpty()
-            val apkFile = File(app.sourceDir)
-            val fileName = apkFile.name
-            // Convert to content:// URI using FileProvider
-            val apkUri = FileProvider.getUriForFile(
-                context,
-                "${applicationContext.packageName}.fileprovider",
-                apkFile)
 
-            APKInfo(
-                app.loadLabel(packageManager).toString(),
-                app.packageName,
-                fileName,
-                isSystemApp,
-                isSplitApk,
-                iconBytes,
-                apkUri.toString()
-            )
+
+            // only return non split apk
+            if ((!isSystemApp || withSystemApp) && !isSplitApk) {
+                val drawable = packageManager.getApplicationIcon(app)
+                val stream = ByteArrayOutputStream()
+                drawable.toBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+                val iconBytes = stream.toByteArray()
+
+
+                val apkFile = File(app.sourceDir)
+                val fileName = apkFile.name
+                // Convert to content:// URI using FileProvider
+                val apkUri = FileProvider.getUriForFile(
+                    context, "${applicationContext.packageName}.fileprovider", apkFile
+                )
+
+                APKInfo(
+                    app.loadLabel(packageManager).toString(),
+                    app.packageName,
+                    fileName,
+                    isSystemApp,
+                    isSplitApk,
+                    iconBytes,
+                    apkUri.toString()
+                )
+            } else null
         }
+
     }
 
     private fun handleIntent(intent: Intent?, isOnCreate: Boolean) {

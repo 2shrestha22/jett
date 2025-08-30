@@ -1,4 +1,5 @@
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/platform/platform_api.dart';
 import 'package:jett/screen/home_screen.dart';
 import 'package:jett/utils/device_info.dart';
 import 'package:jett/utils/package_info.dart';
@@ -7,6 +8,8 @@ import 'package:forui/forui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  PlatformApi.instance.init();
   await Future.wait([PackageInfoHelper.init(), DeviceInfoHelper.init()]);
 
   runApp(const MyApp());

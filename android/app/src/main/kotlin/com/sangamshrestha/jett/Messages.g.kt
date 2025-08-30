@@ -232,7 +232,7 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 interface JettApi {
   fun getPlatformVersion(): Version
   fun getInitialFiles(): List<PlatformFile>
-  fun getAPKs(): List<APKInfo>
+  fun getAPKs(withSystemApp: Boolean): List<APKInfo>
 
   companion object {
     /** The codec used by JettApi. */
@@ -277,9 +277,11 @@ interface JettApi {
       run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs$separatedMessageChannelSuffix", codec, taskQueue)
         if (api != null) {
-          channel.setMessageHandler { _, reply ->
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val withSystemAppArg = args[0] as Boolean
             val wrapped: List<Any?> = try {
-              listOf(api.getAPKs())
+              listOf(api.getAPKs(withSystemAppArg))
             } catch (exception: Throwable) {
               MessagesPigeonUtils.wrapError(exception)
             }

@@ -309,14 +309,14 @@ class JettApi {
     }
   }
 
-  Future<List<APKInfo>> getAPKs() async {
+  Future<List<APKInfo>> getAPKs({bool withSystemApp = false}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[withSystemApp]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {

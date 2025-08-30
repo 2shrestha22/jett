@@ -5,25 +5,18 @@ import 'package:jett/messages.g.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/platform/platform_api.dart';
 
-class ApkScreen extends StatefulWidget {
-  const ApkScreen({super.key});
+class ApkPickerScreen extends StatefulWidget {
+  const ApkPickerScreen({super.key});
 
   @override
-  State<ApkScreen> createState() => _ApkScreenState();
+  State<ApkPickerScreen> createState() => _ApkPickerScreenState();
 }
 
-class _ApkScreenState extends State<ApkScreen> {
+class _ApkPickerScreenState extends State<ApkPickerScreen> {
   final _api = PlatformApi.instance;
   bool isSystemAppVisible = false;
 
   List<APKInfo> selectedAPKs = [];
-  late final Future<List<APKInfo>> future;
-
-  @override
-  void initState() {
-    super.initState();
-    future = _api.getAPKs();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +24,15 @@ class _ApkScreenState extends State<ApkScreen> {
       header: FHeader(
         title: Text("Select APKs"),
         suffixes: [
+          FButton.icon(
+            style: FButtonStyle.ghost(),
+            child: isSystemAppVisible ? Icon(FIcons.eye) : Icon(FIcons.eyeOff),
+            onPress: () {
+              setState(() {
+                isSystemAppVisible = !isSystemAppVisible;
+              });
+            },
+          ),
           FButton.icon(
             onPress: () {
               Navigator.of(context).pop();
@@ -41,7 +43,7 @@ class _ApkScreenState extends State<ApkScreen> {
       ),
       child: SafeArea(
         child: FutureBuilder(
-          future: future,
+          future: _api.apkList,
           builder: (context, snapshot) {
             if (snapshot.hasData) {
               final filteredAPKs = _filterList(snapshot);
@@ -67,7 +69,7 @@ class _ApkScreenState extends State<ApkScreen> {
                           title: Row(
                             spacing: 4,
                             children: [
-                              Text(item.name),
+                              Flexible(child: Text(item.name)),
                               if (item.isSystemApp) Icon(FIcons.cpu, size: 12),
                               if (item.isSplitApk) Icon(FIcons.split, size: 12),
                             ],
@@ -80,39 +82,17 @@ class _ApkScreenState extends State<ApkScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      spacing: 8,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: FButton(
-                            style: FButtonStyle.outline(),
-                            prefix: isSystemAppVisible
-                                ? Icon(FIcons.eye)
-                                : Icon(FIcons.eyeOff),
-                            child: isSystemAppVisible
-                                ? Text('Hide System Apps')
-                                : Text('Show System Apps'),
-                            onPress: () {
-                              setState(() {
-                                isSystemAppVisible = !isSystemAppVisible;
-                              });
-                            },
-                          ),
+                    child: FButton(
+                      prefix: Icon(FIcons.plus),
+                      style: FButtonStyle.primary(),
+                      suffix: Text(
+                        '(${selectedAPKs.length})',
+                        style: TextStyle(
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
-                        FButton(
-                          prefix: Icon(FIcons.plus),
-                          style: FButtonStyle.primary(),
-                          suffix: Text(
-                            '(${selectedAPKs.length})',
-                            style: TextStyle(
-                              fontFeatures: [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                          onPress: selectedAPKs.isEmpty ? null : _onAddPress,
-                          child: Text('Add'),
-                        ),
-                      ],
+                      ),
+                      onPress: selectedAPKs.isEmpty ? null : _onAddPress,
+                      child: Text('Add'),
                     ),
                   ),
                 ],

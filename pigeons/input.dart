@@ -15,7 +15,7 @@ abstract class JettApi {
   List<PlatformFile> getInitialFiles();
 
   @TaskQueue(type: TaskQueueType.serialBackgroundThread)
-  List<APKInfo> getAPKs();
+  List<APKInfo> getAPKs({bool withSystemApp = false});
 }
 
 @FlutterApi()

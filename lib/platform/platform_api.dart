@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import '../messages.g.dart';
 
 // Singleton
@@ -5,6 +8,11 @@ class PlatformApi {
   PlatformApi._();
   static final PlatformApi _api = PlatformApi._();
   static PlatformApi get instance => _api;
+
+  void init() {
+    // precaching
+    _getAPKs();
+  }
 
   final _jettApi = JettApi();
 
@@ -16,7 +24,17 @@ class PlatformApi {
     return _jettApi.getInitialFiles();
   }
 
-  Future<List<APKInfo>> getAPKs() {
-    return _jettApi.getAPKs();
+  late Completer<List<APKInfo>> _apkCompleter;
+  Future<List<APKInfo>> get apkList => _apkCompleter.future;
+  void _getAPKs() {
+    if (!Platform.isAndroid) return;
+
+    _apkCompleter = Completer<List<APKInfo>>();
+    _jettApi
+        .getAPKs(withSystemApp: true)
+        .then(
+          (value) => _apkCompleter.complete(value),
+          onError: (e) => _apkCompleter.completeError(e),
+        );
   }
 }

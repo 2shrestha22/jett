@@ -290,7 +290,7 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 protocol JettApi {
   func getPlatformVersion() throws -> Version
   func getInitialFiles() throws -> [PlatformFile]
-  func getAPKs() throws -> [APKInfo]
+  func getAPKs(withSystemApp: Bool) throws -> [APKInfo]
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -334,9 +334,11 @@ class JettApiSetup {
       ? FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
       : FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec, taskQueue: taskQueue)
     if let api = api {
-      getAPKsChannel.setMessageHandler { _, reply in
+      getAPKsChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let withSystemAppArg = args[0] as! Bool
         do {
-          let result = try api.getAPKs()
+          let result = try api.getAPKs(withSystemApp: withSystemAppArg)
           reply(wrapResult(result))
         } catch {
           reply(wrapError(error))
