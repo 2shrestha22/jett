@@ -14,12 +14,12 @@ class MobilePickerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Wrap(
       spacing: 8,
-      mainAxisSize: MainAxisSize.min,
       children: [
         FButton(
           mainAxisSize: MainAxisSize.min,
+          style: FButtonStyle.secondary(),
           onPress: () async {
             final result = await FastFilePicker.pickMultipleFiles();
 
@@ -34,12 +34,13 @@ class MobilePickerButton extends StatelessWidget {
               onPick(resourceList);
             }
           },
-          prefix: Icon(FIcons.file),
-          child: Text('Select Files'),
+          prefix: Icon(FIcons.files),
+          child: Text('Files'),
         ),
         if (Platform.isAndroid)
           FButton(
             mainAxisSize: MainAxisSize.min,
+            style: FButtonStyle.secondary(),
             onPress: () async {
               final apkResources = await Navigator.push<List<ContentResource>?>(
                 context,
@@ -49,8 +50,8 @@ class MobilePickerButton extends StatelessWidget {
 
               onPick(apkResources!);
             },
-            prefix: Icon(FIcons.file),
-            child: Text('Select APKs'),
+            prefix: Icon(Icons.android),
+            child: Text('APKs'),
           ),
       ],
     );

@@ -4,6 +4,7 @@ import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
 import 'package:jett/messages.g.dart';
 import 'package:jett/model/device.dart';
+import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
@@ -85,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     presenceListener.startListening(_notifierUpdateCallback);
   }
 
-  void _notifierUpdateCallback(message, ipAddress, port) {
+  void _notifierUpdateCallback(Message message, String ipAddress, int port) {
     presenceNotifier.update(
       Device(ipAddress: ipAddress, port: port, name: message.name),
       message.available,
@@ -109,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   Future<bool> _onRequestHandler(String clientAddress) async {
     final accept = await showFDialog(
       context: context,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final theme = context.theme;
         final address = splitAddress(clientAddress);
         return FDialog.adaptive(
@@ -228,6 +229,13 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   Column _fileSelectedView() {
     return Column(
       children: [
+        MobilePickerButton(
+          onPick: (List<Resource> resources) {
+            setState(() {
+              this.resources.addAll(resources);
+            });
+          },
+        ),
         PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
