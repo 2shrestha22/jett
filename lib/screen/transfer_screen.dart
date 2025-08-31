@@ -42,11 +42,10 @@ class _TransferScreenState extends State<TransferScreen> {
           TransferType.receive => Text('Receiving Files'),
           TransferType.send => Text('Sending Files'),
         },
-        suffixes: [
-          FButton.icon(
+        prefixes: [
+          FHeaderAction.x(
             onPress: () =>
                 Navigator.pop(context, widget.transferNotifier.value),
-            child: Icon(FIcons.x),
           ),
         ],
       ),
@@ -113,6 +112,32 @@ class _TransferScreenState extends State<TransferScreen> {
                     };
                   },
                 ),
+              ),
+              SizedBox(height: 50),
+              HookBuilder(
+                builder: (context) {
+                  final transferState = useListenable(widget.transferNotifier);
+                  final opacity = switch (transferState.value) {
+                    TransferState.completed || TransferState.failed => 1.0,
+                    _ => 0.0,
+                  };
+                  return AnimatedOpacity(
+                    duration: Durations.long4,
+                    opacity: opacity,
+                    child: IgnorePointer(
+                      ignoring: opacity != 1,
+                      child: FButton(
+                        style: FButtonStyle.secondary(),
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: () {
+                          Navigator.pop(context);
+                        },
+                        prefix: Icon(FIcons.chevronLeft),
+                        child: Text('Back'),
+                      ),
+                    ),
+                  );
+                },
               ),
               Spacer(),
               Row(

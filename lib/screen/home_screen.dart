@@ -8,21 +8,20 @@ import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
+import 'package:jett/widgets/picker_buttons.dart';
 import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:jett/screen/transfer_screen.dart';
-import 'package:jett/screen/widgets/plugin_check_widget.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/utils/io.dart';
 import 'package:jett/utils/network.dart';
-import 'package:jett/widgets/desktop_picker_button.dart';
 import 'package:jett/widgets/drop_region.dart';
 import 'package:jett/widgets/file_view.dart';
-import 'package:jett/widgets/mobile_picker_button.dart';
 import 'package:jett/widgets/presence_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
+import 'package:jett/widgets/safe_area.dart';
 
 class HomeScreen extends StatefulHookWidget {
   const HomeScreen({super.key});
@@ -187,25 +186,9 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   @override
   Widget build(BuildContext context) {
     return FScaffold(
-      header: FHeader(
-        title: Text(appName),
-        suffixes: [
-          if (resources.isNotEmpty)
-            FButton.icon(
-              onPress: () {
-                setState(() {
-                  resources.clear();
-                });
-              },
-              child: Icon(FIcons.x),
-            ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: (resources.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
-        ),
+      header: FHeader(title: Text(appName)),
+      child: FSafeArea(
+        child: (resources.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
       ),
     );
   }
@@ -214,14 +197,10 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
     return Column(
       children: [
         Expanded(
-          child: Center(
-            child: isDesktop
-                ? DesktopPickerButton(onResourceAdd: _onFilePick)
-                : MobilePickerButton(onPick: _onFilePick),
-          ),
+          child: Center(child: PickerButton(onResourceAdd: _onFilePick)),
         ),
         PresenceView(),
-        PluginCheckWidget(),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -229,12 +208,16 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   Column _fileSelectedView() {
     return Column(
       children: [
-        MobilePickerButton(
-          onPick: (List<Resource> resources) {
-            setState(() {
-              this.resources.addAll(resources);
-            });
-          },
+        Align(
+          alignment: Alignment.centerRight,
+          child: PickerButtonBar(
+            onResourceAdd: _onFilePick,
+            onClear: () {
+              setState(() {
+                resources.clear();
+              });
+            },
+          ),
         ),
         PopScope(
           canPop: false,
@@ -313,7 +296,6 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
 
   @override
   Future<void> dispose() async {
-    // await _intentSub.cancel();
     super.dispose();
   }
 }

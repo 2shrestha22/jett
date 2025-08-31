@@ -4,6 +4,7 @@ import 'package:forui/forui.dart';
 import 'package:jett/messages.g.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/platform/platform_api.dart';
+import 'package:jett/widgets/safe_area.dart';
 
 class ApkPickerScreen extends StatefulWidget {
   const ApkPickerScreen({super.key});
@@ -21,27 +22,27 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return FScaffold(
-      header: FHeader(
+      header: FHeader.nested(
         title: Text("Select APKs"),
+        prefixes: [
+          FHeaderAction.x(
+            onPress: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
         suffixes: [
-          FButton.icon(
-            style: FButtonStyle.ghost(),
-            child: isSystemAppVisible ? Icon(FIcons.eye) : Icon(FIcons.eyeOff),
+          FHeaderAction(
+            icon: isSystemAppVisible ? Icon(FIcons.eye) : Icon(FIcons.eyeOff),
             onPress: () {
               setState(() {
                 isSystemAppVisible = !isSystemAppVisible;
               });
             },
           ),
-          FButton.icon(
-            onPress: () {
-              Navigator.of(context).pop();
-            },
-            child: Icon(FIcons.x),
-          ),
         ],
       ),
-      child: SafeArea(
+      child: FSafeArea(
         child: FutureBuilder(
           future: _api.apkList,
           builder: (context, snapshot) {
@@ -85,12 +86,7 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
                     child: FButton(
                       prefix: Icon(FIcons.plus),
                       style: FButtonStyle.primary(),
-                      suffix: Text(
-                        '(${selectedAPKs.length})',
-                        style: TextStyle(
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
-                      ),
+                      suffix: Text('(${selectedAPKs.length})'),
                       onPress: selectedAPKs.isEmpty ? null : _onAddPress,
                       child: Text('Add'),
                     ),
