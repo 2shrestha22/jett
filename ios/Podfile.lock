@@ -40,8 +40,6 @@ PODS:
     - Flutter
   - file_selector_ios (0.0.1):
     - Flutter
-  - file_share_intent (2.0.3):
-    - Flutter
   - Flutter (1.0.0)
   - image_picker_ios (0.0.1):
     - Flutter
@@ -70,7 +68,6 @@ DEPENDENCIES:
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
-  - file_share_intent (from `.symlinks/plugins/file_share_intent/ios`)
   - Flutter (from `Flutter`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - ios_document_picker (from `.symlinks/plugins/ios_document_picker/ios`)
@@ -97,8 +94,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/file_picker/ios"
   file_selector_ios:
     :path: ".symlinks/plugins/file_selector_ios/ios"
-  file_share_intent:
-    :path: ".symlinks/plugins/file_share_intent/ios"
   Flutter:
     :path: Flutter
   image_picker_ios:
@@ -125,8 +120,7 @@ SPEC CHECKSUMS:
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   file_selector_ios: f92e583d43608aebc2e4a18daac30b8902845502
-  file_share_intent: bb401f5bf5b429fea428b470095d6d319b77a20a
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
   ios_document_picker: c346f87936f15bc75252e888cd975cd9709b7fb3
   irondash_engine_context: 8e58ca8e0212ee9d1c7dc6a42121849986c88486
@@ -138,6 +132,6 @@ SPEC CHECKSUMS:
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
   uri_content: 70a99850f89322ef5eca2e69451ee38221b917ec
 
-PODFILE CHECKSUM: 4305caec6b40dde0ae97be1573c53de1882a07e5
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 
 COCOAPODS: 1.16.2
