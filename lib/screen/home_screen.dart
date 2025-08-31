@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
@@ -30,7 +31,9 @@ class HomeScreen extends StatefulHookWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver
+    implements JettFlutterApi {
   final presenceBroadcaster = PresenceBroadcaster();
 
   final presenceListener = PresenceListener();
@@ -47,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _initBroadcaster();
     _initListener();
@@ -295,7 +299,32 @@ class _HomeScreenState extends State<HomeScreen> implements JettFlutterApi {
   }
 
   @override
-  Future<void> dispose() async {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // TODO: handle app resume and paused states and idle timeouts
+    switch (state) {
+      case AppLifecycleState.resumed:
+        log('Resumed');
+        break;
+      case AppLifecycleState.paused:
+        log('Paused');
+        break;
+      default:
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
+    presenceBroadcaster.close();
+    presenceListener.close();
+    presenceNotifier.dispose();
+
+    sendStateNotifier.dispose();
+    receiveStateNotifier.dispose();
+
+    server.close();
+
     super.dispose();
   }
 }
