@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:jett/utils/save_path.dart';
-import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -15,19 +16,9 @@ import 'package:path/path.dart' as path;
 
 const disableFileWrite = kDebugMode;
 
+final server = Server();
+
 class Server {
-  final Future<bool> Function(String clientAddress) onRequest;
-  final VoidCallback onDownloadStart;
-  final VoidCallback onDownloadFinish;
-  final VoidCallback onError;
-
-  Server({
-    required this.onRequest,
-    required this.onDownloadStart,
-    required this.onDownloadFinish,
-    required this.onError,
-  });
-
   final _router = Router();
   HttpServer? _server;
 
@@ -40,7 +31,12 @@ class Server {
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
-  String _clientIp = '';
+  final _transferStateSubject = BehaviorSubject<TransferState>.seeded(
+    TransferState.idle,
+  );
+  ValueStream<TransferState> get transferState => _transferStateSubject;
+
+  String senderIp = '';
   // when this is true receiving file will be cancelled and reponse is
   // sent to client
   bool _shouldCancel = true;
@@ -59,22 +55,31 @@ class Server {
     _server = await io.serve(handler, InternetAddress.anyIPv4, kTcpPort);
   }
 
+  late Completer<bool> _requestCompleter;
+  void accpetRequest() => _requestCompleter.complete(true);
+  void rejectRequest() => _requestCompleter.complete(false);
+
   Future<Response> _handleRequest(Request request) async {
-    final clientAddress = _getClientAddress(request);
-    final accepted = await onRequest(clientAddress);
+    if (senderIp.isNotEmpty) {
+      return Response.forbidden('Another transfer is in progress');
+    }
+
+    _transferStateSubject.add(TransferState.waiting);
+    senderIp = _getClientAddress(request);
+    _requestCompleter = Completer<bool>();
+    final accepted = await _requestCompleter.future;
 
     if (!accepted) {
-      _clientIp = '';
+      senderIp = '';
       return Response.forbidden('Transfer not accepted');
     }
 
     _shouldCancel = false;
-    _clientIp = clientAddress;
     return Response.ok('Request accepted');
   }
 
   Future<Response> _handleUpload(Request request) async {
-    if (_getClientAddress(request) != _clientIp) {
+    if (_getClientAddress(request) != senderIp) {
       return Response.forbidden('Transfer not accepted from this IP');
     }
 
@@ -89,8 +94,8 @@ class Server {
     _speedometer.reset();
     _speedometer.fileSize = totalFileSize;
     // clear as soon as receiving starts to avoid duplicate request
-    _clientIp = '';
-    onDownloadStart.call();
+    senderIp = '';
+    _transferStateSubject.add(TransferState.inProgress);
 
     try {
       if (request.formData() case var form?) {
@@ -116,13 +121,14 @@ class Server {
         }
       }
     } on TimeoutException catch (_) {
-      onError();
+      _transferStateSubject.add(TransferState.failed);
+
       _speedometer.stop();
       return Response.badRequest();
     }
 
     _speedometer.stop();
-    onDownloadFinish();
+    _transferStateSubject.add(TransferState.completed);
 
     return Response.ok('File uploaded');
   }
@@ -134,7 +140,7 @@ class Server {
 
   /// Reset speedometer readings and session
   void reset() {
-    _clientIp = '';
+    senderIp = '';
     _shouldCancel = true;
     _speedometer.reset();
   }
@@ -143,7 +149,7 @@ class Server {
   void close() {
     _server?.close();
     _server = null;
-    _clientIp = '';
+    senderIp = '';
     _shouldCancel = false;
     _speedometer.reset();
   }

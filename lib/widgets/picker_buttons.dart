@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jett/model/resource.dart';
-import 'package:jett/screen/apk_picker_screen.dart';
 import 'package:jett/utils/io.dart';
 import 'package:jett/widgets/drop_region.dart';
 
@@ -123,10 +123,7 @@ Future<void> _handleApkPick(
   BuildContext context,
   void Function(List<Resource>) onResourceAdd,
 ) async {
-  final apkResources = await Navigator.push<List<ContentResource>?>(
-    context,
-    MaterialPageRoute(builder: (context) => ApkPickerScreen()),
-  );
+  final apkResources = await context.push<List<Resource>>('/pick_apk');
   if (apkResources?.isEmpty ?? true) return;
   onResourceAdd(apkResources!);
 }

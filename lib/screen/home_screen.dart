@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
 import 'package:jett/messages.g.dart';
@@ -11,7 +12,6 @@ import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
 import 'package:jett/widgets/picker_buttons.dart';
 import 'package:jett/screen/send/presence_notifier.dart';
-import 'package:jett/screen/transfer_screen.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/utils/io.dart';
@@ -38,12 +38,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   final presenceListener = PresenceListener();
   final presenceNotifier = PresenceNotifier();
-
-  final sendStateNotifier = ValueNotifier(TransferState.idle);
-  final receiveStateNotifier = ValueNotifier(TransferState.idle);
-
-  late final Server server;
-  final Client client = Client();
 
   final List<Resource> resources = [];
 
@@ -97,25 +91,28 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _initServer() async {
-    server = Server(
-      onRequest: _onRequestHandler,
-      onDownloadStart: _onDownloadStartHandler,
-      onDownloadFinish: () {
-        receiveStateNotifier.value = TransferState.completed;
-      },
-      onError: () {
-        receiveStateNotifier.value = TransferState.failed;
-      },
-    );
+    server.transferState.listen((event) {
+      switch (event) {
+        case TransferState.waiting:
+          _onRequestHandler();
+          break;
+        case TransferState.inProgress:
+          _onDownloadStartHandler();
+          break;
+        default:
+          break;
+      }
+    });
+
     await server.start();
   }
 
-  Future<bool> _onRequestHandler(String clientAddress) async {
+  Future<void> _onRequestHandler() async {
     final accept = await showFDialog(
       context: context,
       builder: (context, _, _) {
         final theme = context.theme;
-        final address = splitAddress(clientAddress);
+        final address = splitAddress(server.senderIp);
         return FDialog.adaptive(
           title: Text('Incoming File Transfer'),
           body: Column(
@@ -158,25 +155,16 @@ class _HomeScreenState extends State<HomeScreen>
       },
     );
 
-    return accept;
+    if (accept) {
+      server.accpetRequest();
+    } else {
+      server.rejectRequest();
+    }
   }
 
   Future<void> _onDownloadStartHandler() async {
     presenceBroadcaster.stopPresenceAnnounce();
-    receiveStateNotifier.value = TransferState.inProgress;
-    await Navigator.push<TransferState>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TransferScreen(
-          transferType: TransferType.receive,
-          speedometerReadingStream: server.speedometerReadingStream,
-          fileNameStream: server.fileNameStream,
-          transferNotifier: receiveStateNotifier,
-        ),
-      ),
-    );
-    // user cancelled the tranfer while in progress
-    // server.requestCancel();
+    await context.push('/receive');
     server.reset();
     presenceBroadcaster.startPresenceAnnounce();
   }
@@ -264,34 +252,9 @@ class _HomeScreenState extends State<HomeScreen>
         OnlineDevices(
           notifier: presenceNotifier,
           onTap: (device) async {
-            sendStateNotifier.value = TransferState.waiting;
-            Navigator.push<TransferState>(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransferScreen(
-                  transferType: TransferType.send,
-                  speedometerReadingStream: client.speedometerReadingsStream,
-                  fileNameStream: client.fileNameStream,
-                  transferNotifier: sendStateNotifier,
-                ),
-              ),
-            ).then((value) {
-              client.reset();
-              sendStateNotifier.value = TransferState.idle;
-            });
-
-            try {
-              final accpeted = await client.requestUpload(device.ipAddress);
-              if (!accpeted) {
-                sendStateNotifier.value = TransferState.failed;
-                return;
-              }
-              sendStateNotifier.value = TransferState.inProgress;
-              await client.upload(resources, device.ipAddress);
-              sendStateNotifier.value = TransferState.completed;
-            } catch (e) {
-              sendStateNotifier.value = TransferState.failed;
-            }
+            client.requestUpload(resources, device.ipAddress);
+            await context.push('/send');
+            client.reset();
           },
         ),
       ],
@@ -319,9 +282,6 @@ class _HomeScreenState extends State<HomeScreen>
     presenceBroadcaster.close();
     presenceListener.close();
     presenceNotifier.dispose();
-
-    sendStateNotifier.dispose();
-    receiveStateNotifier.dispose();
 
     server.close();
 
