@@ -1,18 +1,15 @@
 package com.sangamshrestha.jett
 
 import APKInfo
-import JettApi
-import JettFlutterApi
+import JettHostApi
 import PlatformFile
 import Version
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import io.flutter.embedding.android.FlutterActivity
@@ -20,16 +17,16 @@ import io.flutter.embedding.engine.FlutterEngine
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-class MainActivity : FlutterActivity(), JettApi {
+class MainActivity : FlutterActivity(), JettHostApi {
 
     private var _initialFiles: MutableList<PlatformFile> = mutableListOf()
-    private lateinit var flutterApi: JettFlutterApi
+    val eventListener = EventListener()
 
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        JettApi.setUp(flutterEngine.dartExecutor.binaryMessenger, this)
-        flutterApi = JettFlutterApi(flutterEngine.dartExecutor.binaryMessenger)
+        JettHostApi.setUp(flutterEngine.dartExecutor.binaryMessenger, this)
+        FilesStreamHandler.register(flutterEngine.dartExecutor.binaryMessenger, eventListener)
     }
 
 
@@ -101,15 +98,15 @@ class MainActivity : FlutterActivity(), JettApi {
                 intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let {
                     val files = getFileWithDetails(uris = listOf(it))
                     if (isOnCreate) _initialFiles = ArrayList(files)
-                    else flutterApi.onIntent(files) {};
+                    else  eventListener.onEvent(files)
                 }
             }
 
             Intent.ACTION_SEND_MULTIPLE -> {
                 intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let {
-                    val files = getFileWithDetails(uris = it);
+                    val files = getFileWithDetails(uris = it)
                     if (isOnCreate) _initialFiles = ArrayList(files)
-                    else flutterApi.onIntent(files) {};
+                    else eventListener.onEvent(files)
                 }
             }
         }
@@ -117,7 +114,7 @@ class MainActivity : FlutterActivity(), JettApi {
 
     private fun getFileWithDetails(uris: List<Uri>): List<PlatformFile> {
         return uris.map {
-            val details = getFileNameAndSizeFromUri(context, it);
+            val details = getFileNameAndSizeFromUri(context, it)
             PlatformFile(it.toString(), name = details.first, size = details.second)
         }
     }

@@ -10,7 +10,7 @@ import 'package:pigeon/pigeon.dart';
   ),
 )
 @HostApi()
-abstract class JettApi {
+abstract class JettHostApi {
   Version getPlatformVersion();
   List<PlatformFile> getInitialFiles();
 
@@ -18,9 +18,9 @@ abstract class JettApi {
   List<APKInfo> getAPKs({bool withSystemApp = false});
 }
 
-@FlutterApi()
-abstract class JettFlutterApi {
-  void onIntent(List<PlatformFile> files);
+@EventChannelApi()
+abstract class JettEventChannelApi {
+  List<PlatformFile> files();
 }
 
 class Version {

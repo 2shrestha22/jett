@@ -4,7 +4,6 @@ import 'dart:developer';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
-import 'package:jett/messages.g.dart';
 import 'package:jett/model/device.dart';
 import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
@@ -24,6 +23,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
 import 'package:jett/widgets/safe_area.dart';
 
+import '../platform/platform_api.dart';
+
 class HomeScreen extends StatefulHookWidget {
   const HomeScreen({super.key});
 
@@ -31,15 +32,15 @@ class HomeScreen extends StatefulHookWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with WidgetsBindingObserver
-    implements JettFlutterApi {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final presenceBroadcaster = PresenceBroadcaster();
 
   final presenceListener = PresenceListener();
   final presenceNotifier = PresenceNotifier();
 
   final List<Resource> resources = [];
+
+  final platformApi = PlatformApi.instance;
 
   @override
   void initState() {
@@ -54,24 +55,20 @@ class _HomeScreenState extends State<HomeScreen>
     _initShareIntenet();
   }
 
-  void _onShareIntentReceived(List<PlatformFile> files) {
+  void _onFilesReceived(List<ContentResource> files) {
     setState(() {
-      resources.clear();
-      resources.addAll(
-        files.map((e) => ContentResource(uri: e.uri, name: e.name)),
-      );
+      // don't replace, just add so that uses can easily add files multiple times
+      // resources.clear();
+      resources.addAll(files);
     });
   }
 
   void _initShareIntenet() {
     if (isDesktop) return;
 
-    JettFlutterApi.setUp(this);
-    JettApi().getInitialFiles().then(_onShareIntentReceived);
+    platformApi.getInitialFiles().then(_onFilesReceived);
+    platformApi.files().listen(_onFilesReceived);
   }
-
-  @override
-  void onIntent(List<PlatformFile> files) => _onShareIntentReceived(files);
 
   Future<void> _initBroadcaster() async {
     await presenceBroadcaster.init();

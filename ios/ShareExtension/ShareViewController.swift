@@ -63,7 +63,7 @@ class ShareViewController: UIViewController {
     }
 
     private func openHostApp() {
-        let url = URL(string: "share://com.sangamshrestha.jett")!
+        let url = URL(string: "jett://share")!
 
         var responder: UIResponder? = self
         while responder != nil {
