@@ -11,6 +11,7 @@
 		31C57DC7A3D8A6583A596591 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A12D2202DC0EFE94C5AD467 /* Pods_Runner.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		3D69EE4E2E8B94E60053C39B /* EventListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D69EE4D2E8B94E00053C39B /* EventListener.swift */; };
 		3D7A509E2E819AF100A54959 /* CodableFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7A509D2E818F9E00A54959 /* CodableFile.swift */; };
 		3D7A509F2E819AF100A54959 /* CodableFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7A509D2E818F9E00A54959 /* CodableFile.swift */; };
 		3DC8BD6F2E75CEDD0097EC1B /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3DC8BD652E75CEDD0097EC1B /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -72,6 +73,7 @@
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		3D69EE4D2E8B94E00053C39B /* EventListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventListener.swift; sourceTree = "<group>"; };
 		3D7A509D2E818F9E00A54959 /* CodableFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodableFile.swift; sourceTree = "<group>"; };
 		3DC8BD652E75CEDD0097EC1B /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DC8BD842E76EA8D0097EC1B /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				3DC8BD862E770D2D0097EC1B /* Messages.g.swift */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+				3D69EE4D2E8B94E00053C39B /* EventListener.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -490,6 +493,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3DC8BD872E770D2D0097EC1B /* Messages.g.swift in Sources */,
+				3D69EE4E2E8B94E60053C39B /* EventListener.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				3D7A509E2E819AF100A54959 /* CodableFile.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,

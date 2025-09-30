@@ -31,7 +31,7 @@
 			<string>com.sangamshrestha.jett</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>share</string>
+				<string>jett</string>
 			</array>
 		</dict>
 	</array>
