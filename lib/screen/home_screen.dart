@@ -153,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
 
     if (accept) {
-      server.accpetRequest();
+      server.acceptRequest();
     } else {
       server.rejectRequest();
     }

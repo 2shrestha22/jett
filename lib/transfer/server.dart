@@ -56,7 +56,7 @@ class Server {
   }
 
   late Completer<bool> _requestCompleter;
-  void accpetRequest() => _requestCompleter.complete(true);
+  void acceptRequest() => _requestCompleter.complete(true);
   void rejectRequest() => _requestCompleter.complete(false);
 
   Future<Response> _handleRequest(Request request) async {
