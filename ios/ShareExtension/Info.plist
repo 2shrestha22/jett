@@ -9,7 +9,7 @@
 			<key>NSExtensionActivationRule</key>
 			<dict>
 				<key>NSExtensionActivationSupportsFileWithMaxCount</key>
-				<string>50</string>
+				<integer>50</integer>
 			</dict>
 		</dict>
 		<key>NSExtensionMainStoryboard</key>

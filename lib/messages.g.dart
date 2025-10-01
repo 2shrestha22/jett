@@ -14,16 +14,6 @@ PlatformException _createConnectionError(String channelName) {
     message: 'Unable to establish connection on channel: "$channelName".',
   );
 }
-
-List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty = false}) {
-  if (empty) {
-    return <Object?>[];
-  }
-  if (error == null) {
-    return <Object?>[result];
-  }
-  return <Object?>[error.code, error.message, error.details];
-}
 bool _deepEquals(Object? a, Object? b) {
   if (a is List && b is List) {
     return a.length == b.length &&
@@ -240,11 +230,13 @@ class _PigeonCodec extends StandardMessageCodec {
   }
 }
 
-class JettApi {
-  /// Constructor for [JettApi].  The [binaryMessenger] named argument is
+const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(_PigeonCodec());
+
+class JettHostApi {
+  /// Constructor for [JettHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  JettApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+  JettHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
       : pigeonVar_binaryMessenger = binaryMessenger,
         pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
@@ -254,7 +246,7 @@ class JettApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<Version> getPlatformVersion() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getPlatformVersion$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getPlatformVersion$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -282,7 +274,7 @@ class JettApi {
   }
 
   Future<List<PlatformFile>> getInitialFiles() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getInitialFiles$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getInitialFiles$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -310,7 +302,7 @@ class JettApi {
   }
 
   Future<List<APKInfo>> getAPKs({bool withSystemApp = false}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getAPKs$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -338,37 +330,14 @@ class JettApi {
   }
 }
 
-abstract class JettFlutterApi {
-  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
-
-  void onIntent(List<PlatformFile> files);
-
-  static void setUp(JettFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
-    {
-      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.com.sangamshrestha.jett.JettFlutterApi.onIntent$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          assert(message != null,
-          'Argument for dev.flutter.pigeon.com.sangamshrestha.jett.JettFlutterApi.onIntent was null.');
-          final List<Object?> args = (message as List<Object?>?)!;
-          final List<PlatformFile>? arg_files = (args[0] as List<Object?>?)?.cast<PlatformFile>();
-          assert(arg_files != null,
-              'Argument for dev.flutter.pigeon.com.sangamshrestha.jett.JettFlutterApi.onIntent was null, expected non-null List<PlatformFile>.');
-          try {
-            api.onIntent(arg_files!);
-            return wrapResponse(empty: true);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
-          }
-        });
-      }
-    }
+Stream<List> files( {String instanceName = ''}) {
+  if (instanceName.isNotEmpty) {
+    instanceName = '.$instanceName';
   }
+  final EventChannel filesChannel =
+      EventChannel('dev.flutter.pigeon.com.sangamshrestha.jett.JettEventChannelApi.files$instanceName', pigeonMethodCodec);
+  return filesChannel.receiveBroadcastStream().map((dynamic event) {
+    return event as List;
+  });
 }
+    

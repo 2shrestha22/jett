@@ -55,10 +55,6 @@ private func wrapError(_ error: Any) -> [Any?] {
   ]
 }
 
-private func createConnectionError(withChannelName channelName: String) -> PigeonError {
-  return PigeonError(code: "channel-error", message: "Unable to establish connection on channel: '\(channelName)'.", details: "")
-}
-
 private func isNullish(_ value: Any?) -> Bool {
   return value is NSNull || value == nil
 }
@@ -286,25 +282,27 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
   static let shared = MessagesPigeonCodec(readerWriter: MessagesPigeonCodecReaderWriter())
 }
 
+var messagesPigeonMethodCodec = FlutterStandardMethodCodec(readerWriter: MessagesPigeonCodecReaderWriter());
+
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
-protocol JettApi {
+protocol JettHostApi {
   func getPlatformVersion() throws -> Version
   func getInitialFiles() throws -> [PlatformFile]
   func getAPKs(withSystemApp: Bool) throws -> [APKInfo]
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
-class JettApiSetup {
+class JettHostApiSetup {
   static var codec: FlutterStandardMessageCodec { MessagesPigeonCodec.shared }
-  /// Sets up an instance of `JettApi` to handle messages through the `binaryMessenger`.
-  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: JettApi?, messageChannelSuffix: String = "") {
+  /// Sets up an instance of `JettHostApi` to handle messages through the `binaryMessenger`.
+  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: JettHostApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
     #if os(iOS)
       let taskQueue = binaryMessenger.makeBackgroundTaskQueue?()
     #else
       let taskQueue: FlutterTaskQueue? = nil
     #endif
-    let getPlatformVersionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getPlatformVersion\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    let getPlatformVersionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getPlatformVersion\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       getPlatformVersionChannel.setMessageHandler { _, reply in
         do {
@@ -317,7 +315,7 @@ class JettApiSetup {
     } else {
       getPlatformVersionChannel.setMessageHandler(nil)
     }
-    let getInitialFilesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getInitialFiles\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    let getInitialFilesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getInitialFiles\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       getInitialFilesChannel.setMessageHandler { _, reply in
         do {
@@ -331,8 +329,8 @@ class JettApiSetup {
       getInitialFilesChannel.setMessageHandler(nil)
     }
     let getAPKsChannel = taskQueue == nil
-      ? FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-      : FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec, taskQueue: taskQueue)
+      ? FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+      : FlutterBasicMessageChannel(name: "dev.flutter.pigeon.com.sangamshrestha.jett.JettHostApi.getAPKs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec, taskQueue: taskQueue)
     if let api = api {
       getAPKsChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
@@ -349,36 +347,67 @@ class JettApiSetup {
     }
   }
 }
-/// Generated protocol from Pigeon that represents Flutter messages that can be called from Swift.
-protocol JettFlutterApiProtocol {
-  func onIntent(files filesArg: [PlatformFile], completion: @escaping (Result<Void, PigeonError>) -> Void)
+
+private class PigeonStreamHandler<ReturnType>: NSObject, FlutterStreamHandler {
+  private let wrapper: PigeonEventChannelWrapper<ReturnType>
+  private var pigeonSink: PigeonEventSink<ReturnType>? = nil
+
+  init(wrapper: PigeonEventChannelWrapper<ReturnType>) {
+    self.wrapper = wrapper
+  }
+
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
+    -> FlutterError?
+  {
+    pigeonSink = PigeonEventSink<ReturnType>(events)
+    wrapper.onListen(withArguments: arguments, sink: pigeonSink!)
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    pigeonSink = nil
+    wrapper.onCancel(withArguments: arguments)
+    return nil
+  }
 }
-class JettFlutterApi: JettFlutterApiProtocol {
-  private let binaryMessenger: FlutterBinaryMessenger
-  private let messageChannelSuffix: String
-  init(binaryMessenger: FlutterBinaryMessenger, messageChannelSuffix: String = "") {
-    self.binaryMessenger = binaryMessenger
-    self.messageChannelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+
+class PigeonEventChannelWrapper<ReturnType> {
+  func onListen(withArguments arguments: Any?, sink: PigeonEventSink<ReturnType>) {}
+  func onCancel(withArguments arguments: Any?) {}
+}
+
+class PigeonEventSink<ReturnType> {
+  private let sink: FlutterEventSink
+
+  init(_ sink: @escaping FlutterEventSink) {
+    self.sink = sink
   }
-  var codec: MessagesPigeonCodec {
-    return MessagesPigeonCodec.shared
+
+  func success(_ value: ReturnType) {
+    sink(value)
   }
-  func onIntent(files filesArg: [PlatformFile], completion: @escaping (Result<Void, PigeonError>) -> Void) {
-    let channelName: String = "dev.flutter.pigeon.com.sangamshrestha.jett.JettFlutterApi.onIntent\(messageChannelSuffix)"
-    let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
-    channel.sendMessage([filesArg] as [Any?]) { response in
-      guard let listResponse = response as? [Any?] else {
-        completion(.failure(createConnectionError(withChannelName: channelName)))
-        return
-      }
-      if listResponse.count > 1 {
-        let code: String = listResponse[0] as! String
-        let message: String? = nilOrValue(listResponse[1])
-        let details: String? = nilOrValue(listResponse[2])
-        completion(.failure(PigeonError(code: code, message: message, details: details)))
-      } else {
-        completion(.success(()))
-      }
+
+  func error(code: String, message: String?, details: Any?) {
+    sink(FlutterError(code: code, message: message, details: details))
+  }
+
+  func endOfStream() {
+    sink(FlutterEndOfEventStream)
+  }
+
+}
+
+class FilesStreamHandler: PigeonEventChannelWrapper<[PlatformFile]> {
+  static func register(with messenger: FlutterBinaryMessenger,
+                      instanceName: String = "",
+                      streamHandler: FilesStreamHandler) {
+    var channelName = "dev.flutter.pigeon.com.sangamshrestha.jett.JettEventChannelApi.files"
+    if !instanceName.isEmpty {
+      channelName += ".\(instanceName)"
     }
+    let internalStreamHandler = PigeonStreamHandler<[PlatformFile]>(wrapper: streamHandler)
+    let channel = FlutterEventChannel(name: channelName, binaryMessenger: messenger, codec: messagesPigeonMethodCodec)
+    channel.setStreamHandler(internalStreamHandler)
   }
 }
+      

@@ -2,6 +2,8 @@ import 'package:jett/core/hooks.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/widgets/file_info_stream_builder.dart';
 import 'package:jett/screen/widgets/speedometer_widget.dart';
+import 'package:jett/transfer/client.dart';
+import 'package:jett/transfer/server.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:jett/utils/data.dart';
 import 'package:flutter/material.dart';
@@ -13,24 +15,35 @@ enum TransferType { send, receive }
 
 class TransferScreen extends StatefulHookWidget {
   final TransferType transferType;
-  final ValueStream<SpeedometerReading?> speedometerReadingStream;
-  final Stream<String> fileNameStream;
 
-  final ValueNotifier<TransferState> transferNotifier;
-
-  const TransferScreen({
-    super.key,
-    required this.transferType,
-    required this.speedometerReadingStream,
-    required this.fileNameStream,
-    required this.transferNotifier,
-  });
+  const TransferScreen({super.key, required this.transferType});
 
   @override
   State<TransferScreen> createState() => _TransferScreenState();
 }
 
 class _TransferScreenState extends State<TransferScreen> {
+  late ValueStream<TransferState> transferStateStream;
+  late ValueStream<SpeedometerReading?> speedometerReadingStream;
+  late Stream<String> fileNameStream;
+
+  @override
+  void initState() {
+    super.initState();
+    switch (widget.transferType) {
+      case TransferType.send:
+        transferStateStream = client.transferState;
+        speedometerReadingStream = client.speedometerReadingsStream;
+        fileNameStream = client.fileNameStream;
+        break;
+      case TransferType.receive:
+        transferStateStream = server.transferState;
+        speedometerReadingStream = server.speedometerReadingStream;
+        fileNameStream = server.fileNameStream;
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ipAddress = useLocalAddress();
@@ -44,8 +57,7 @@ class _TransferScreenState extends State<TransferScreen> {
         },
         prefixes: [
           FHeaderAction.x(
-            onPress: () =>
-                Navigator.pop(context, widget.transferNotifier.value),
+            onPress: () => Navigator.pop(context, transferStateStream.value),
           ),
         ],
       ),
@@ -57,7 +69,7 @@ class _TransferScreenState extends State<TransferScreen> {
             children: [
               Spacer(),
               StreamBuilder(
-                stream: widget.speedometerReadingStream.sampleTime(
+                stream: speedometerReadingStream.sampleTime(
                   Duration(milliseconds: 400),
                 ),
                 builder: (context, snapshot) {
@@ -87,7 +99,7 @@ class _TransferScreenState extends State<TransferScreen> {
                 },
               ),
               SpeedometerWidget(
-                speedometerReadingsStream: widget.speedometerReadingStream,
+                speedometerReadingsStream: speedometerReadingStream,
                 showSpeed: false,
               ),
               DefaultTextStyle(
@@ -96,19 +108,17 @@ class _TransferScreenState extends State<TransferScreen> {
                 ),
                 child: HookBuilder(
                   builder: (context) {
-                    final transferState = useListenable(
-                      widget.transferNotifier,
-                    );
-                    return switch (transferState.value) {
-                      TransferState.idle => SizedBox.shrink(),
+                    final transferState = useStream(transferStateStream);
+                    return switch (transferState.data) {
                       TransferState.waiting => Text('Waiting for receiver'),
                       TransferState.inProgress => FileInfoStreamBuilder(
-                        stream: widget.fileNameStream,
+                        stream: fileNameStream,
                       ),
                       TransferState.completed => Text(
-                        'Transfer finished, ${formatTransferRate(widget.speedometerReadingStream.value?.avgSpeedBps ?? 0)}',
+                        'Transfer finished, ${formatTransferRate(speedometerReadingStream.value?.avgSpeedBps ?? 0)}',
                       ),
                       TransferState.failed => Text('Transfer failed'),
+                      _ => SizedBox.shrink(),
                     };
                   },
                 ),
@@ -116,8 +126,8 @@ class _TransferScreenState extends State<TransferScreen> {
               SizedBox(height: 50),
               HookBuilder(
                 builder: (context) {
-                  final transferState = useListenable(widget.transferNotifier);
-                  final opacity = switch (transferState.value) {
+                  final transferState = useStream(transferStateStream);
+                  final opacity = switch (transferState.data) {
                     TransferState.completed || TransferState.failed => 1.0,
                     _ => 0.0,
                   };

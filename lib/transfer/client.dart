@@ -6,14 +6,16 @@ import 'dart:typed_data';
 
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/resource.dart';
+import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
 
+final client = Client();
+
 class Client {
-  // final _httpClient = HttpClient();
   final _speedometer = Speedometer();
 
   ValueStream<SpeedometerReading?> get speedometerReadingsStream =>
@@ -22,6 +24,11 @@ class Client {
   final _fileNameSubject = BehaviorSubject<String>();
   Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
 
+  final _transferStateSubject = BehaviorSubject<TransferState>.seeded(
+    TransferState.idle,
+  );
+  ValueStream<TransferState> get transferState => _transferStateSubject;
+
   Completer<void>? _abortTrigger;
 
   // final _transferStatus = BehaviorSubject<TransferStatus>();
@@ -29,23 +36,25 @@ class Client {
   //     _transferStatus.stream.distinct();
 
   /// Retruns true if the transfer request is accepted by the receiver.
-  Future<bool> requestUpload(String ipAddr) async {
-    // _transferStatus.add(
-    //   TransferStatus(state: TransferState.waiting, files: []),
-    // );
-
+  Future<void> requestUpload(List<Resource> resources, String ipAddr) async {
+    _transferStateSubject.add(TransferState.waiting);
     _abortTrigger = Completer<void>();
 
     final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
     final response = await http.Client().get(uri);
 
-    return response.statusCode == 200;
+    if (response.statusCode == 200) {
+      _transferStateSubject.add(TransferState.inProgress);
+      await _upload(resources, ipAddr);
+    } else {
+      _transferStateSubject.add(TransferState.failed);
+    }
   }
 
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> upload(List<Resource> resources, String ipAddr) async {
+  Future<void> _upload(List<Resource> resources, String ipAddr) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
 
@@ -121,8 +130,9 @@ class Client {
     if (httpResponse.statusCode == 200) {
       final response = await _readResponseAsString(httpResponse);
       log(response);
+      _transferStateSubject.add(TransferState.completed);
     } else {
-      throw Exception('Failed to upload files: ${httpResponse.statusCode}');
+      _transferStateSubject.add(TransferState.failed);
     }
   }
 
