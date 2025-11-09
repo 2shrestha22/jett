@@ -1,22 +1,21 @@
 import 'package:jett/model/device.dart';
-import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 class OnlineDevices extends StatelessWidget {
   final void Function(Device device) onTap;
-  final PresenceNotifier notifier;
+  final Stream<List<Device>> stream;
 
-  const OnlineDevices({super.key, required this.onTap, required this.notifier});
+  const OnlineDevices({super.key, required this.onTap, required this.stream});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ListenableBuilder(
-        listenable: notifier,
-        builder: (context, child) {
-          if (notifier.devices.isEmpty) {
+      child: StreamBuilder(
+        stream: stream,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 8,
@@ -28,7 +27,7 @@ class OnlineDevices extends StatelessWidget {
           }
           return Wrap(
             spacing: 8,
-            children: notifier.devices
+            children: snapshot.data!
                 .map(
                   (device) => FButton(
                     mainAxisSize: MainAxisSize.min,

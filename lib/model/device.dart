@@ -3,11 +3,13 @@ part 'device.mapper.dart';
 
 @MappableClass()
 class Device with DeviceMappable {
-  final String ipAddress;
+  final String id;
+  final String? ipAddress;
   final int port;
   final String name;
 
   const Device({
+    required this.id,
     required this.ipAddress,
     required this.port,
     required this.name,
@@ -15,6 +17,6 @@ class Device with DeviceMappable {
 
   @override
   String toString() {
-    return 'Device(ipAddress: $ipAddress, port: $port, name: $name)';
+    return 'Device(id: $id, ipAddress: $ipAddress, port: $port, name: $name)';
   }
 }

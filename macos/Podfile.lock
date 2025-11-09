@@ -2,6 +2,9 @@ PODS:
   - accessing_security_scoped_resource (0.0.1):
     - Flutter
     - FlutterMacOS
+  - bonsoir_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - device_info_plus (0.0.1):
     - FlutterMacOS
   - file_picker (0.0.1):
@@ -27,6 +30,7 @@ PODS:
 
 DEPENDENCIES:
   - accessing_security_scoped_resource (from `Flutter/ephemeral/.symlinks/plugins/accessing_security_scoped_resource/darwin`)
+  - bonsoir_darwin (from `Flutter/ephemeral/.symlinks/plugins/bonsoir_darwin/darwin`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
@@ -42,6 +46,8 @@ DEPENDENCIES:
 EXTERNAL SOURCES:
   accessing_security_scoped_resource:
     :path: Flutter/ephemeral/.symlinks/plugins/accessing_security_scoped_resource/darwin
+  bonsoir_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/bonsoir_darwin/darwin
   device_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   file_picker:
@@ -67,6 +73,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
+  bonsoir_darwin: 29c7ccf356646118844721f36e1de4b61f6cbd0e
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31

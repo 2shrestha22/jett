@@ -36,7 +36,7 @@ class PresenceNotifier extends ChangeNotifier {
       _lastSeenHashMap.remove(device.ipAddress);
     } else {
       mutated = _activeDevices.add(device);
-      _lastSeenHashMap[device.ipAddress] = DateTime.now();
+      _lastSeenHashMap[device.ipAddress!] = DateTime.now();
     }
     if (mutated) notifyListeners();
   }

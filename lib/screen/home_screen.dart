@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:go_router/go_router.dart';
+import 'package:jett/discovery/broadcast.dart';
+import 'package:jett/discovery/discovery.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence.dart';
 import 'package:jett/model/device.dart';
@@ -33,9 +35,9 @@ class HomeScreen extends StatefulHookWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  final presenceBroadcaster = PresenceBroadcaster();
+  final discoveryService = DiscoveryService()..startDiscovert();
+  final broadCastService = BroadcastService()..startBroadcast();
 
-  final presenceListener = PresenceListener();
   final presenceNotifier = PresenceNotifier();
 
   final List<Resource> resources = [];
@@ -70,22 +72,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     platformApi.files().listen(_onFilesReceived);
   }
 
-  Future<void> _initBroadcaster() async {
-    await presenceBroadcaster.init();
-    presenceBroadcaster.startPresenceAnnounce();
-  }
+  Future<void> _initBroadcaster() async {}
 
-  Future<void> _initListener() async {
-    await presenceListener.init();
-    presenceListener.startListening(_notifierUpdateCallback);
-  }
+  Future<void> _initListener() async {}
 
-  void _notifierUpdateCallback(Message message, String ipAddress, int port) {
-    presenceNotifier.update(
-      Device(ipAddress: ipAddress, port: port, name: message.name),
-      message.available,
-    );
-  }
+  // void _notifierUpdateCallback(Message message, String ipAddress, int port) {
+  //   presenceNotifier.update(
+  //     Device(ipAddress: ipAddress, port: port, name: message.name),
+  //     message.available,
+  //   );
+  // }
 
   Future<void> _initServer() async {
     server.transferState.listen((event) {
@@ -160,10 +156,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _onDownloadStartHandler() async {
-    presenceBroadcaster.stopPresenceAnnounce();
     await context.push('/receive');
     server.reset();
-    presenceBroadcaster.startPresenceAnnounce();
   }
 
   void _onFilePick(List<Resource> pickedResources) {
@@ -247,9 +241,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
 
         OnlineDevices(
-          notifier: presenceNotifier,
+          stream: discoveryService.deviceStream,
           onTap: (device) async {
-            client.requestUpload(resources, device.ipAddress);
+            client.requestUpload(resources, device.ipAddress!);
             await context.push('/send');
             client.reset();
           },
@@ -276,8 +270,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
-    presenceBroadcaster.close();
-    presenceListener.close();
     presenceNotifier.dispose();
 
     server.close();

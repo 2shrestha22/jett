@@ -21,7 +21,9 @@ class DeviceMapper extends ClassMapperBase<Device> {
   @override
   final String id = 'Device';
 
-  static String _$ipAddress(Device v) => v.ipAddress;
+  static String _$id(Device v) => v.id;
+  static const Field<Device, String> _f$id = Field('id', _$id);
+  static String? _$ipAddress(Device v) => v.ipAddress;
   static const Field<Device, String> _f$ipAddress = Field(
     'ipAddress',
     _$ipAddress,
@@ -33,6 +35,7 @@ class DeviceMapper extends ClassMapperBase<Device> {
 
   @override
   final MappableFields<Device> fields = const {
+    #id: _f$id,
     #ipAddress: _f$ipAddress,
     #port: _f$port,
     #name: _f$name,
@@ -40,6 +43,7 @@ class DeviceMapper extends ClassMapperBase<Device> {
 
   static Device _instantiate(DecodingData data) {
     return Device(
+      id: data.dec(_f$id),
       ipAddress: data.dec(_f$ipAddress),
       port: data.dec(_f$port),
       name: data.dec(_f$name),
@@ -92,7 +96,7 @@ extension DeviceValueCopy<$R, $Out> on ObjectCopyWith<$R, Device, $Out> {
 
 abstract class DeviceCopyWith<$R, $In extends Device, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? ipAddress, int? port, String? name});
+  $R call({String? id, String? ipAddress, int? port, String? name});
   DeviceCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -103,15 +107,18 @@ class _DeviceCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Device, $Out>
   @override
   late final ClassMapperBase<Device> $mapper = DeviceMapper.ensureInitialized();
   @override
-  $R call({String? ipAddress, int? port, String? name}) => $apply(
-    FieldCopyWithData({
-      if (ipAddress != null) #ipAddress: ipAddress,
-      if (port != null) #port: port,
-      if (name != null) #name: name,
-    }),
-  );
+  $R call({String? id, Object? ipAddress = $none, int? port, String? name}) =>
+      $apply(
+        FieldCopyWithData({
+          if (id != null) #id: id,
+          if (ipAddress != $none) #ipAddress: ipAddress,
+          if (port != null) #port: port,
+          if (name != null) #name: name,
+        }),
+      );
   @override
   Device $make(CopyWithData data) => Device(
+    id: data.get(#id, or: $value.id),
     ipAddress: data.get(#ipAddress, or: $value.ipAddress),
     port: data.get(#port, or: $value.port),
     name: data.get(#name, or: $value.name),
