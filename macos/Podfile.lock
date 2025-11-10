@@ -24,6 +24,8 @@ PODS:
     - FlutterMacOS
   - uri_content (0.0.1):
     - FlutterMacOS
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
   - accessing_security_scoped_resource (from `Flutter/ephemeral/.symlinks/plugins/accessing_security_scoped_resource/darwin`)
@@ -38,6 +40,7 @@ DEPENDENCIES:
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - super_native_extensions (from `Flutter/ephemeral/.symlinks/plugins/super_native_extensions/macos`)
   - uri_content (from `Flutter/ephemeral/.symlinks/plugins/uri_content/macos`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
 
 EXTERNAL SOURCES:
   accessing_security_scoped_resource:
@@ -64,6 +67,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/super_native_extensions/macos
   uri_content:
     :path: Flutter/ephemeral/.symlinks/plugins/uri_content/macos
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
 
 SPEC CHECKSUMS:
   accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
@@ -78,6 +83,7 @@ SPEC CHECKSUMS:
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   super_native_extensions: c2795d6d9aedf4a79fae25cb6160b71b50549189
   uri_content: 6c7c098bcc83078659b4d274f42db92691eb9123
+  url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 
