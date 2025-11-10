@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
@@ -13,12 +15,14 @@ import 'package:jett/utils/package_info.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  PlatformApi.instance.init();
   await Future.wait([PackageInfoHelper.init(), DeviceInfoHelper.init()]);
 
-  PlatformApi.instance.getPlatformVersion().then((value) {
-    debugPrint('Running on: ${value.string}');
-  });
+  if (Platform.isAndroid || Platform.isIOS) {
+    PlatformApi.instance.init();
+    PlatformApi.instance.getPlatformVersion().then((value) {
+      debugPrint('Running on: ${value.string}');
+    });
+  }
 
   runApp(const MyApp());
 }
