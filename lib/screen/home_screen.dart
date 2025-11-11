@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/broadcast.dart';
 import 'package:jett/discovery/discovery.dart';
@@ -11,7 +14,6 @@ import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/send/online_devices.dart';
-import 'package:jett/widgets/picker_buttons.dart';
 import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
@@ -19,11 +21,10 @@ import 'package:jett/utils/io.dart';
 import 'package:jett/utils/network.dart';
 import 'package:jett/widgets/drop_region.dart';
 import 'package:jett/widgets/file_view.dart';
+import 'package:jett/widgets/picker_buttons.dart';
 import 'package:jett/widgets/presence_view.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:forui/forui.dart';
 import 'package:jett/widgets/safe_area.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../platform/platform_api.dart';
 
@@ -169,7 +170,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return FScaffold(
-      header: FHeader(title: Text(appName)),
+      header: FHeader(
+        title: Text(appName),
+        suffixes: [
+          IconButton(
+            onPressed: () {
+              context.push('/about');
+            },
+            icon: Icon(LucideIcons.info),
+          ),
+        ],
+      ),
       child: FSafeArea(
         child: (resources.isEmpty) ? _fileEmptyView() : _fileSelectedView(),
       ),

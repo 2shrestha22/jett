@@ -19,6 +19,7 @@ class PlatformApi {
     _getAPKs();
   }
 
+  /// Mobile only API
   Future<pigeon.Version> getPlatformVersion() {
     return _hostApi.getPlatformVersion();
   }

@@ -65,6 +65,8 @@ PODS:
   - SwiftyGif (5.4.5)
   - uri_content (0.0.1):
     - Flutter
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - accessing_security_scoped_resource (from `.symlinks/plugins/accessing_security_scoped_resource/darwin`)
@@ -81,6 +83,7 @@ DEPENDENCIES:
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - super_native_extensions (from `.symlinks/plugins/super_native_extensions/ios`)
   - uri_content (from `.symlinks/plugins/uri_content/ios`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   trunk:
@@ -118,6 +121,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/super_native_extensions/ios"
   uri_content:
     :path: ".symlinks/plugins/uri_content/ios"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
@@ -138,6 +143,7 @@ SPEC CHECKSUMS:
   super_native_extensions: b763c02dc3a8fd078389f410bf15149179020cb4
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
   uri_content: 70a99850f89322ef5eca2e69451ee38221b917ec
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 

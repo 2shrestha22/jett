@@ -72,6 +72,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>To send files app needs to find devices in your network.</string>
 </dict>

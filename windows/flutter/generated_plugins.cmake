@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   irondash_engine_context
   super_native_extensions
   uri_content
+  url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
