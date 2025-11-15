@@ -55,7 +55,7 @@ class TransferProgressIndicator extends StatelessWidget {
                 },
                 blendMode: BlendMode.srcIn,
                 child: Text(
-                  "$percent%",
+                  '$percent%',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,

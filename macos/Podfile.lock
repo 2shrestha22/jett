@@ -74,13 +74,13 @@ SPEC CHECKSUMS:
   accessing_security_scoped_resource: 4a87897646efbc3a4578e28ea4c08083d7bf3e67
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
-  file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31
+  file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   irondash_engine_context: 893c7d96d20ce361d7e996f39d360c4c2f9869ba
   macos_file_picker: 8308ccb8cca0578190f640cd163b3da001db0222
   network_info_plus: 21d1cd6a015ccb2fdff06a1fbfa88d54b4e92f61
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
-  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
   super_native_extensions: c2795d6d9aedf4a79fae25cb6160b71b50549189
   uri_content: 6c7c098bcc83078659b4d274f42db92691eb9123
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd

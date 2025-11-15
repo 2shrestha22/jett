@@ -23,7 +23,7 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
   Widget build(BuildContext context) {
     return FScaffold(
       header: FHeader.nested(
-        title: Text("Select APKs"),
+        title: Text('Select APKs'),
         prefixes: [
           FHeaderAction.x(
             onPress: () {
@@ -97,7 +97,7 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
             if (snapshot.hasError) {
               return Text(snapshot.error.toString());
             }
-            return FProgress.circularIcon();
+            return FCircularProgress.loader();
           },
         ),
       ),

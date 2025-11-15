@@ -43,18 +43,6 @@ class SpeedometerReadingMapper extends ClassMapperBase<SpeedometerReading> {
     'speedBps',
     _$speedBps,
   );
-  static double _$avgSpeedBps(SpeedometerReading v) => v.avgSpeedBps;
-  static const Field<SpeedometerReading, double> _f$avgSpeedBps = Field(
-    'avgSpeedBps',
-    _$avgSpeedBps,
-    mode: FieldMode.member,
-  );
-  static double _$progress(SpeedometerReading v) => v.progress;
-  static const Field<SpeedometerReading, double> _f$progress = Field(
-    'progress',
-    _$progress,
-    mode: FieldMode.member,
-  );
 
   @override
   final MappableFields<SpeedometerReading> fields = const {
@@ -62,8 +50,6 @@ class SpeedometerReadingMapper extends ClassMapperBase<SpeedometerReading> {
     #elapsedMilliseconds: _f$elapsedMilliseconds,
     #fileSize: _f$fileSize,
     #speedBps: _f$speedBps,
-    #avgSpeedBps: _f$avgSpeedBps,
-    #progress: _f$progress,
   };
 
   static SpeedometerReading _instantiate(DecodingData data) {
