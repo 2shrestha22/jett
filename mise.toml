@@ -1,5 +1,5 @@
 [tools]
-flutter = "3.35.6"
+flutter = "3.38.1"
 
 [hooks]
 postinstall = "yq '.tools.flutter' mise.toml | xargs -I {} yq -o=yaml -i '.environment.flutter = \"{}\"' pubspec.yaml"

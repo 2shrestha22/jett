@@ -1,7 +1,7 @@
-import 'package:jett/model/device.dart';
-import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:jett/model/device.dart';
+import 'package:jett/screen/send/presence_notifier.dart';
 
 class OnlineDevices extends StatelessWidget {
   final void Function(Device device) onTap;
@@ -21,7 +21,7 @@ class OnlineDevices extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 8,
               children: [
-                FProgress.circularIcon(),
+                FCircularProgress.loader(),
                 Text('Looking for nearby devices...'),
               ],
             );

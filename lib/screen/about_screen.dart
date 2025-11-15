@@ -28,7 +28,7 @@ class AboutScreen extends StatelessWidget {
                 title: Text('Source code'),
                 subtitle: Text('GitHub '),
                 onPress: () {
-                  launchUrlString("https://github.com/2shrestha22/jett");
+                  launchUrlString('https://github.com/2shrestha22/jett');
                 },
               ),
               FTile(

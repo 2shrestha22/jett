@@ -87,7 +87,7 @@ class _TransferScreenState extends State<TransferScreen> {
                           ),
                         ),
                         TextSpan(
-                          text: " MB/s", // unit part
+                          text: ' MB/s', // unit part
                           style: theme.typography.base.copyWith(
                             color: theme.colors.mutedForeground,
                           ),
