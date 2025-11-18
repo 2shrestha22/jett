@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return FDialog.adaptive(
           title: Text('Incoming File Transfer'),
           body: Column(
-            mainAxisSize: .min,
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RichText(

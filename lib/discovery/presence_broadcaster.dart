@@ -12,7 +12,7 @@ class PresenceBroadcaster {
   RawDatagramSocket? _socket;
   Timer? _timer;
 
-  final Completer _ready = .new();
+  final Completer _ready = Completer();
   Future<void> init() async {
     _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
     _socket?.joinMulticast(_multicastAddress);
