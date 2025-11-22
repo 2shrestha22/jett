@@ -12,6 +12,8 @@ import 'package:jett/screen/transfer_screen.dart';
 import 'package:jett/utils/device_info.dart';
 import 'package:jett/utils/package_info.dart';
 
+import 'package:sentry_flutter/sentry_flutter.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -24,7 +26,14 @@ void main() async {
     });
   }
 
-  runApp(const MyApp());
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'https://da32f214874c3089e296dc6c2b95578d@o4507385753567232.ingest.de.sentry.io/4510406156615760';
+      options.enableAutoSessionTracking = false; // Disable analytics
+      options.tracesSampleRate = 0.0; // Disable performance tracing
+    },
+    appRunner: () => runApp(const MyApp()),
+  );
 }
 
 class MyApp extends StatefulWidget {

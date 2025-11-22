@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:jett/utils/package_info.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -36,6 +38,22 @@ class AboutScreen extends StatelessWidget {
                 title: Text('Version'),
                 subtitle: Text(PackageInfoHelper.version),
               ),
+              if (kDebugMode)
+                FTile(
+                  prefix: Icon(FIcons.bug),
+                  title: Text('Test Sentry'),
+                  subtitle: Text('Press to crash'),
+                  onPress: () async {
+                    try {
+                      throw StateError('Sentry Test Exception');
+                    } catch (exception, stackTrace) {
+                      await Sentry.captureException(
+                        exception,
+                        stackTrace: stackTrace,
+                      );
+                    }
+                  },
+                ),
             ],
           ),
         ],
