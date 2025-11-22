@@ -11,22 +11,27 @@ class PresenceBroadcaster {
 
   RawDatagramSocket? _socket;
   Timer? _timer;
+  Timer? _retryTimer;
 
-  final Completer _ready = Completer();
+  bool _isClosed = false;
+
   Future<void> init() async {
-    _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-    _socket?.joinMulticast(_multicastAddress);
-    // listen for the first write event to mark socket as ready
-    _socket?.listen((event) {
-      if (!_ready.isCompleted && event == RawSocketEvent.write) {
-        _ready.complete();
+    if (_socket != null) return;
+    _isClosed = false;
+    _retryTimer?.cancel();
+
+    try {
+      _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      _socket?.joinMulticast(_multicastAddress);
+    } catch (e) {
+      if (!_isClosed) {
+        // Retry initialization if it fails (e.g. due to missing permissions)
+        _retryTimer = Timer(const Duration(seconds: 2), init);
       }
-    });
+    }
   }
 
   Future<void> startPresenceAnnounce() async {
-    await _ready.future;
-
     if (_timer?.isActive ?? false) return;
 
     final data = _baseMessage.toJson().codeUnits;
@@ -50,6 +55,8 @@ class PresenceBroadcaster {
   }
 
   void close() {
+    _isClosed = true;
+    _retryTimer?.cancel();
     stopPresenceAnnounce();
     _socket?.close();
     _socket = null;
