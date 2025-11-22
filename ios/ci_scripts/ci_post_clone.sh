@@ -24,21 +24,17 @@ rm flutter.zip
 
 export PATH="$PATH:$HOME/flutter/bin"
 
-# Install Flutter artifacts for iOS (--ios), or macOS (--macos) platforms.
-echo "Pre-caching Flutter artifacts..."
-flutter precache --ios
-
-# Install Flutter dependencies.
-echo "Getting Flutter dependencies..."
-flutter pub get
-
 # Install CocoaPods using Homebrew.
 echo "Installing CocoaPods..."
 HOMEBREW_NO_AUTO_UPDATE=1 # disable homebrew's automatic updates.
 brew install cocoapods
 
-# Install CocoaPods dependencies.
-echo "Installing Pods..."
-cd ios && pod install # run `pod install` in the `ios` directory.
+# Install Flutter artifacts for iOS (--ios), or macOS (--macos) platforms.
+echo "Pre-caching Flutter artifacts..."
+flutter precache --ios
+
+# Configure iOS app.
+echo "Configuring iOS app..."
+flutter build ios --config-only
 
 exit 0
