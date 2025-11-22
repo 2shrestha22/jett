@@ -128,7 +128,9 @@ Future<void> _handleApkPick(
   onResourceAdd(apkResources!);
 }
 
-void _handleFilePick(void Function(List<Resource>) onResourceAdd) async {
+Future<void> _handleFilePick(
+  void Function(List<Resource>) onResourceAdd,
+) async {
   final result = await FastFilePicker.pickMultipleFiles();
 
   if (result != null && result.isNotEmpty) {

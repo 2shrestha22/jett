@@ -21,26 +21,56 @@ class PresenceListener {
     _socket?.joinMulticast(_multicastAddress);
   }
 
-  void startListening(OnMessageCallback onMessage) {
+  void startListening(
+    OnMessageCallback onMessage, {
+    // on iOS and macOS it fails to start for the first time because of
+    // permission issue so we schedule a timeout to retry
+    void Function()? onDiscoveryTimeout,
+  }) {
+    _onDiscoveryTimeout = onDiscoveryTimeout;
+    _startSelfDiscoveryTimer();
+
     _subscription = _socket?.listen((event) {
       if (event == RawSocketEvent.read) {
         final datagram = _socket?.receive();
-        if (datagram != null && datagram.address.address != _localIp) {
-          final message = Message.fromJson(String.fromCharCodes(datagram.data));
-          onMessage(message, datagram.address.address, datagram.port);
+        if (datagram != null) {
+          if (datagram.address.address == _localIp) {
+            _stopSelfDiscoveryTimer();
+          } else {
+            final message = Message.fromJson(
+              String.fromCharCodes(datagram.data),
+            );
+            onMessage(message, datagram.address.address, datagram.port);
+          }
         }
       }
     });
   }
 
-  void stopListening() {
-    _subscription?.cancel();
+  Future<void> stopListening() async {
+    _stopSelfDiscoveryTimer();
+    await _subscription?.cancel();
     _subscription = null;
   }
 
-  void close() {
-    stopListening();
+  Future<void> close() async {
+    await stopListening();
     _socket?.close();
     _socket = null;
+  }
+
+  Timer? _selfDiscoveryTimer;
+  void Function()? _onDiscoveryTimeout;
+
+  void _startSelfDiscoveryTimer() {
+    _selfDiscoveryTimer?.cancel();
+    _selfDiscoveryTimer = Timer(const Duration(seconds: 3), () {
+      _onDiscoveryTimeout?.call();
+    });
+  }
+
+  void _stopSelfDiscoveryTimer() {
+    _selfDiscoveryTimer?.cancel();
+    _selfDiscoveryTimer = null;
   }
 }

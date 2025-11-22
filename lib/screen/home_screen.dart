@@ -74,12 +74,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _initBroadcaster() async {
     await presenceBroadcaster.init();
-    presenceBroadcaster.startPresenceAnnounce();
+    await presenceBroadcaster.startPresenceAnnounce();
   }
 
   Future<void> _initListener() async {
     await presenceListener.init();
-    presenceListener.startListening(_notifierUpdateCallback);
+    presenceListener.startListening(
+      _notifierUpdateCallback,
+      onDiscoveryTimeout: _restartDiscovery,
+    );
+  }
+
+  int _discoveryRestartCount = 0;
+  Future<void> _restartDiscovery() async {
+    if (_discoveryRestartCount > 0) return;
+    _discoveryRestartCount++;
+
+    log('Self discovery failed, restarting discovery services...');
+    presenceBroadcaster.close();
+    await presenceListener.close();
+
+    // Re-initialize
+    await _initBroadcaster();
+    await _initListener();
   }
 
   void _notifierUpdateCallback(Message message, String ipAddress, int port) {
@@ -166,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     presenceBroadcaster.stopPresenceAnnounce();
     await context.push('/receive');
     server.reset();
-    presenceBroadcaster.startPresenceAnnounce();
+    await presenceBroadcaster.startPresenceAnnounce();
   }
 
   void _onFilePick(List<Resource> pickedResources) {
@@ -262,8 +279,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         OnlineDevices(
           notifier: presenceNotifier,
           onTap: (device) async {
-            client.requestUpload(resources, device.ipAddress);
-            await context.push('/send');
+            await client.requestUpload(resources, device.ipAddress);
+            if (mounted) await context.push('/send');
             client.reset();
           },
         ),
