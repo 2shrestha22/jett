@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:jett/utils/package_info.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:jett/utils/package_info.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart' as path_provider;
 
 /// return path when it saves all the files
 Future<String> getSavePath() async {
@@ -25,7 +25,7 @@ Future<String> getSavePath() async {
       }
       final storageDir = directory.path.split('/Android/').first;
       final savePath = '$storageDir/Download/$appName';
-      await Directory(savePath).create();
+      await Directory(savePath).create(recursive: true);
       return savePath;
 
     case TargetPlatform.linux:
