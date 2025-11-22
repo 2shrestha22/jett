@@ -32,5 +32,7 @@
     <string>public.app-category.utilities</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>To send files app needs to find devices in your network.</string>
 </dict>
 </plist>
