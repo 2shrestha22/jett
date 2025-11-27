@@ -133,13 +133,32 @@ Future<void> _handleFilePick(
 ) async {
   final result = await FastFilePicker.pickMultipleFiles();
 
+  List<Resource> resourceList = [];
+
   if (result != null && result.isNotEmpty) {
-    final resourceList = result.map((e) {
-      if (e.uri != null) {
-        return ContentResource(uri: e.uri!, name: e.name);
-      }
-      return FileResource(e.path!);
-    }).toList();
-    onResourceAdd(resourceList);
+    if (Platform.isIOS) {
+      await result.first.tryUseAppleScopedResource((
+        hasAccess,
+        pickerPath,
+      ) async {
+        if (hasAccess) {
+          if (pickerPath.uri != null) {
+            resourceList.add(ContentResource(uri: pickerPath.uri!));
+          } else if (pickerPath.path != null) {
+            resourceList.add(FileResource(pickerPath.path!));
+          }
+          onResourceAdd(resourceList);
+        }
+        return;
+      });
+    } else {
+      resourceList = result.map((e) {
+        if (e.uri != null) {
+          return ContentResource(uri: e.uri!, name: e.name);
+        }
+        return FileResource(e.path!);
+      }).toList();
+      onResourceAdd(resourceList);
+    }
   }
 }

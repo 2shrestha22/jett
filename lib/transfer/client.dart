@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/speedometer.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
 
@@ -79,9 +78,9 @@ class Client {
 
       totalFileSize += contentLenght;
 
-      final contentStream = resource.openRead();
+      final contentStream = resource.openRead().cast<List<int>>();
       final fileStream = contentStream.transform(
-        StreamTransformer<Uint8List, Uint8List>.fromHandlers(
+        StreamTransformer<List<int>, List<int>>.fromHandlers(
           handleData: (data, sink) {
             sink.add(data);
             _fileNameSubject.add(resource.name);
