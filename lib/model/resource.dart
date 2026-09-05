@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fast_file_picker/fast_file_picker.dart';
 import 'package:mime/mime.dart';
 import 'package:uri_content/uri_content.dart';
 import 'package:path/path.dart' as path;
@@ -21,6 +22,10 @@ sealed class Resource {
   Future<int?> length();
 
   String? get mimeType => lookupMimeType(name);
+
+  /// Release any OS-level access held for this resource. Called when the
+  /// resource is removed from the send list.
+  Future<void> release() async {}
 }
 
 class FileResource extends Resource {
@@ -72,6 +77,44 @@ class ContentResource extends Resource {
 
   @override
   Future<int?> length() => _uriContent.getContentLength(_uri);
+}
+
+/// A file picked on iOS/macOS whose security-scoped access is held open
+/// for as long as the resource is in the send list. This lets the file be
+/// read in place at transfer time, without copying it into the app
+/// container. Access is released via [release].
+class ScopedFileResource extends Resource {
+  final FastFilePickerPath _pickerPath;
+  bool? _hasAccess;
+
+  ScopedFileResource(this._pickerPath, this._hasAccess);
+
+  File get _file => File(_pickerPath.path!);
+
+  @override
+  String get name => _pickerPath.name;
+
+  @override
+  String get identifier => _file.path;
+
+  @override
+  Stream<List<int>> openRead() => _file.openRead();
+
+  @override
+  Future<int?> length() async {
+    final exist = await _file.exists();
+    if (exist) {
+      final length = await _file.length();
+      return length;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> release() async {
+    await _pickerPath.releaseAppleScopedResource(_hasAccess);
+    _hasAccess = null;
+  }
 }
 
 // uri_content does not work without scheme so need to append it manually

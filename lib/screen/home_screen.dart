@@ -192,6 +192,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  void _releaseResources() {
+    for (final resource in resources) {
+      resource.release();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FScaffold(
@@ -232,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: PickerButtonBar(
             onResourceAdd: _onFilePick,
             onClear: () {
+              _releaseResources();
               setState(() {
                 resources.clear();
               });
@@ -241,6 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
+            _releaseResources();
             setState(() {
               resources.clear();
             });
@@ -264,6 +272,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       resource: resource,
                       // fileSize: file.size,
                       onRemoveTap: () {
+                        resource.release();
                         setState(() {
                           resources.remove(resource);
                         });
@@ -305,6 +314,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+
+    _releaseResources();
 
     presenceBroadcaster.close();
     presenceListener.close();
