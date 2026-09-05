@@ -33,32 +33,66 @@ class ShareViewController: UIViewController {
         let group = DispatchGroup()
 
         for attachment in attachments {
-            let hasFileUrl = attachment.hasItemConformingToTypeIdentifier(
-                UTType.fileURL.identifier
-            )
-            if hasFileUrl {
-                group.enter()
-                attachment.loadItem(
-                    forTypeIdentifier: UTType.fileURL.identifier
-                ) { (item, error: Error?) in
-                    if let url = item as? URL {
-                        NSLog("URL:", url.absoluteString)
-                        if let copyUrl = self.copyFile(url: url) {
-                            files.append(CodableFile(uri: copyUrl, name: url.lastPathComponent))
-                        }
-                    } else if let error = error {
-                        print(
-                            "Failed to load item: \(error.localizedDescription)"
-                        )
-                    }
-                    group.leave()
-
+            group.enter()
+            loadFile(from: attachment) { file in
+                if let file = file {
+                    files.append(file)
                 }
+                group.leave()
             }
         }
+
         group.notify(queue: .main) {
             self.userDefaults?.set(try? JSONEncoder().encode(files), forKey: "files")
             self.openHostApp()
+        }
+    }
+
+    private func loadFile(
+        from attachment: NSItemProvider,
+        completion: @escaping (CodableFile?) -> Void
+    ) {
+        // Prefer a direct file URL if the provider has one (Files app, etc.)
+        if attachment.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            attachment.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, error in
+                if let url = item as? URL, let copyUrl = self.copyFile(url: url) {
+                    completion(CodableFile(uri: copyUrl, name: url.lastPathComponent))
+                } else {
+                    // fall back below if this somehow fails
+                    self.loadViaFileRepresentation(attachment, completion: completion)
+                }
+            }
+            return
+        }
+
+        loadViaFileRepresentation(attachment, completion: completion)
+    }
+
+    private func loadViaFileRepresentation(
+        _ attachment: NSItemProvider,
+        completion: @escaping (CodableFile?) -> Void
+    ) {
+        // Find the most specific type identifier the provider actually offers
+        guard let typeIdentifier = attachment.registeredTypeIdentifiers.first else {
+            completion(nil)
+            return
+        }
+
+        attachment.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { tempUrl, error in
+            guard let tempUrl = tempUrl else {
+                if let error = error {
+                    NSLog("loadFileRepresentation failed: \(error.localizedDescription)")
+                }
+                completion(nil)
+                return
+            }
+            // tempUrl is only valid inside this closure — copy synchronously now
+            let copyUrl = self.copyFile(url: tempUrl)
+            if let copyUrl = copyUrl {
+                completion(CodableFile(uri: copyUrl, name: tempUrl.lastPathComponent))
+            } else {
+                completion(nil)
+            }
         }
     }
 
@@ -97,5 +131,5 @@ class ShareViewController: UIViewController {
     private func generateRandomNameForFile(url: URL) -> String {
         return UUID().uuidString + "." + url.pathExtension
     }
-    
+
 }
