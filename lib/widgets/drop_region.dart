@@ -1,9 +1,10 @@
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/utils/io.dart';
 import 'package:flutter/material.dart';
-import 'package:super_drag_and_drop/super_drag_and_drop.dart';
+import 'package:path/path.dart' as p;
 
 class FileDropRegion extends StatelessWidget {
   final void Function(Resource resource) onResourceAdd;
@@ -20,53 +21,37 @@ class FileDropRegion extends StatelessWidget {
     // only support drop region for desktop
     if (!isDesktop) return child;
 
-    return DropRegion(
-      formats: [Formats.fileUri],
-      hitTestBehavior: HitTestBehavior.opaque,
-      onDropOver: (event) {
-        // This drop region only supports copy operation.
-        if (event.session.allowedOperations.contains(DropOperation.copy)) {
-          return DropOperation.copy;
-        } else {
-          return DropOperation.none;
-        }
-      },
-      onDropEnter: (event) {
+    return DropTarget(
+      onDragEntered: (details) {
         // This is called when region first accepts a drag. You can use this
         // to display a visual indicator that the drop is allowed.
       },
-      onDropLeave: (event) {
+      onDragExited: (details) {
         // Called when drag leaves the region. Will also be called after
         // drag completion.
         // This is a good place to remove any visual indicators.
       },
-      onPerformDrop: (event) async {
-        // Called when user dropped the item. You can now request the data.
-        // Note that data must be requested before the performDrop callback
-        // is over.
-        final items = event.session.items;
+      onDragDone: (details) async {
+        for (final item in details.files) {
+          // TODO: support folder picking
+          if (item is DropItemDirectory) continue;
+          // directories come through as plain files on windows/linux
+          final type = await FileSystemEntity.type(item.path);
+          if (type == FileSystemEntityType.directory) continue;
 
-        for (var item in items) {
-          final dataReader = item.dataReader!;
-          if (dataReader.canProvide(Formats.fileUri)) {
-            dataReader.getValue(Formats.fileUri, (value) async {
-              if (value != null) {
-                final fileType = await FileSystemEntity.type(value.path);
-
-                // TODO: support folder picking
-                // note: for some file, filetype is not found in mac
-                // but it works after renaming the file in the mac,
-                // weird issue
-                if (fileType == FileSystemEntityType.directory) return;
-                onResourceAdd(
-                  ContentResource(
-                    uri: value.toString(),
-                    name: value.pathSegments.last,
-                  ),
-                );
-              }
-            });
+          // on macOS, files dropped from outside the app container need
+          // security-scoped access before they can be read; keep the access
+          // for the session since the file is read later during transfer
+          final bookmark = item.extraAppleBookmark;
+          if (Platform.isMacOS && bookmark != null && bookmark.isNotEmpty) {
+            await DesktopDrop.instance.startAccessingSecurityScopedResource(
+              bookmark: bookmark,
+            );
           }
+
+          onResourceAdd(
+            ContentResource(uri: item.path, name: p.basename(item.path)),
+          );
         }
       },
       child: child,
