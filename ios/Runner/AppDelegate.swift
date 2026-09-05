@@ -2,7 +2,7 @@ import Flutter
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, JettHostApi {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, JettHostApi {
     let userDefaults = UserDefaults(suiteName: "group.jett")
     var initialFiles: [PlatformFile] = []
     let eventListener = EventListener()
@@ -11,22 +11,23 @@ import UIKit
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        GeneratedPluginRegistrant.register(with: self)
-
-        let controller = window?.rootViewController as! FlutterViewController
-        JettHostApiSetup.setUp(binaryMessenger: controller.binaryMessenger, api: self)
-        FilesStreamHandler.register(with: controller.binaryMessenger, streamHandler: eventListener)
-
-        handleSharedFiles(setInitialFiles: true)
-
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
-    override func application(
-        _ application: UIApplication,
-        open url: URL,
-        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-    ) -> Bool {
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+        let messenger = engineBridge.applicationRegistrar.messenger()
+        JettHostApiSetup.setUp(binaryMessenger: messenger, api: self)
+        FilesStreamHandler.register(with: messenger, streamHandler: eventListener)
+        
+        handleSharedFiles(setInitialFiles: true)
+    }
+
+    // Handles jett://share received from the share extension.
+    // Called from SceneDelegate since UIScene lifecycle no longer
+    // delivers URLs to application(_:open:options:).
+    func handleSharedURL(_ url: URL) -> Bool {
         if url.scheme == "jett" && url.host == "share" {
             // matches jett://share received from share extension
             handleSharedFiles(setInitialFiles: false)

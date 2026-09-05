@@ -68,5 +68,29 @@
 	<false/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>To send files app needs to find devices in your network.</string>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+      <key>UIApplicationSupportsMultipleScenes</key>
+      <false/>
+      <key>UISceneConfigurations</key>
+      <dict>
+        <key>UIWindowSceneSessionRoleApplication</key>
+        <array>
+          <dict>
+            <key>UISceneClassName</key>
+            <string>UIWindowScene</string>
+            <key>UISceneDelegateClassName</key>
+            <string>FlutterSceneDelegate</string>
+            <key>UISceneConfigurationName</key>
+            <string>flutter</string>
+            <key>UISceneStoryboardFile</key>
+            <string>Main</string>
+            <key>UISceneDelegateClassName</key>
+            <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+          </dict>
+        </array>
+      </dict>
+    </dict>
 </dict>
 </plist>
+
