@@ -32,7 +32,7 @@ class OnlineDevices extends StatelessWidget {
                 .map(
                   (device) => FButton(
                     mainAxisSize: MainAxisSize.min,
-                    prefix: Icon(FIcons.send),
+                    prefix: Icon(FLucideIcons.send),
                     onPress: () => onTap(device),
                     child: Text(device.name),
                   ),

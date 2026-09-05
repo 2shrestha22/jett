@@ -17,8 +17,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.10+14
 environment:
-  sdk: ^3.9.2
-  flutter: 3.35.7
+  sdk: '>=3.13.0 <4.0.0'
+  flutter: 3.47.2
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -36,26 +36,26 @@ dependencies:
   shelf_multipart: ^2.0.1
   path_provider: ^2.1.5
   http: ^1.5.0
-  file_picker: ^10.2.3
+  file_picker: ^12.2.0
   path: ^1.9.1
-  package_info_plus: ^9.0.0
+  package_info_plus: ^10.2.1
   dart_mappable: ^4.6.0
-  device_info_plus: ^11.5.0
+  device_info_plus: ^13.2.0
   flutter_animate: ^4.5.2
-  lucide_icons_flutter: ^3.0.8
-  forui: ^0.16.0
-  forui_assets: ^0.16.0
+  forui: ^0.26.0
+  forui_assets: ^0.25.0
   mime: ^2.0.0
   http_parser: ^4.1.2
-  network_info_plus: ^7.0.0
+  network_info_plus: ^8.2.1
   image_picker: ^1.1.2
-  fast_file_picker: ^0.4.7
-  uri_content: ^3.1.1
+  fast_file_picker: ^1.0.1
+  uri_content: ^4.0.0
   flutter_hooks: ^0.21.3+1
   desktop_drop: ^0.8.4
-  go_router: ^17.0.0
+  go_router: ^18.0.1
   url_launcher: ^6.3.2
-  sentry_flutter: ^9.6.0
+  sentry_flutter: ^10.0.0-alpha.1
+  material_ui: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -67,7 +67,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.6.0
   dart_mappable_builder: ^4.6.0
-  pigeon: ^26.0.1
+  pigeon: ^28.0.0
+  forui_cli: ^0.26.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -76,6 +78,12 @@ flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist/Geist.ttf
+        - asset: assets/fonts/Geist/Geist-Italic.ttf
+          style: italic
   uses-material-design: true
 # To add assets to your application, add an assets section, like this:
 # assets:

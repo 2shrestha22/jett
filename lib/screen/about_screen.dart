@@ -26,7 +26,7 @@ class AboutScreen extends StatelessWidget {
           FTileGroup(
             children: [
               FTile(
-                prefix: Icon(FIcons.code),
+                prefix: Icon(FLucideIcons.code),
                 title: Text('Source code'),
                 subtitle: Text('GitHub '),
                 onPress: () {
@@ -34,13 +34,13 @@ class AboutScreen extends StatelessWidget {
                 },
               ),
               FTile(
-                prefix: Icon(FIcons.tag),
+                prefix: Icon(FLucideIcons.tag),
                 title: Text('Version'),
                 subtitle: Text(PackageInfoHelper.version),
               ),
               if (kDebugMode)
                 FTile(
-                  prefix: Icon(FIcons.bug),
+                  prefix: Icon(FLucideIcons.bug),
                   title: Text('Test Sentry'),
                   subtitle: Text('Press to crash'),
                   onPress: () async {

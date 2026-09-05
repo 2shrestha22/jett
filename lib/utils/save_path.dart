@@ -34,9 +34,9 @@ Future<String> getSavePath() async {
       final downloadsDir = await path_provider.getDownloadsDirectory();
       final savePath = path.join(downloadsDir!.path, appName);
 
-      return await Directory(
-        savePath,
-      ).create(recursive: true).then((value) => value.path);
+      return await Directory(savePath)
+          .create(recursive: true)
+          .then((value) => value.path);
 
     default:
       throw UnimplementedError();

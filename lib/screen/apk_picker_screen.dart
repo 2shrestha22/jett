@@ -33,7 +33,9 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
         ],
         suffixes: [
           FHeaderAction(
-            icon: isSystemAppVisible ? Icon(FIcons.eye) : Icon(FIcons.eyeOff),
+            icon: isSystemAppVisible
+                ? Icon(FLucideIcons.eye)
+                : Icon(FLucideIcons.eyeOff),
             onPress: () {
               setState(() {
                 isSystemAppVisible = !isSystemAppVisible;
@@ -61,7 +63,7 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
                         return FTile(
                           selected: selected,
                           suffix: selected
-                              ? Icon(FIcons.check)
+                              ? Icon(FLucideIcons.check)
                               : SizedBox.shrink(),
                           prefix: SizedBox.square(
                             dimension: 40,
@@ -71,8 +73,10 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
                             spacing: 4,
                             children: [
                               Flexible(child: Text(item.name)),
-                              if (item.isSystemApp) Icon(FIcons.cpu, size: 12),
-                              if (item.isSplitApk) Icon(FIcons.split, size: 12),
+                              if (item.isSystemApp)
+                                Icon(FLucideIcons.cpu, size: 12),
+                              if (item.isSplitApk)
+                                Icon(FLucideIcons.split, size: 12),
                             ],
                           ),
                           subtitle: Text(item.packageName),
@@ -84,8 +88,8 @@ class _ApkPickerScreenState extends State<ApkPickerScreen> {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: FButton(
-                      prefix: Icon(FIcons.plus),
-                      style: FButtonStyle.primary(),
+                      variant: .primary,
+                      prefix: Icon(FLucideIcons.plus),
                       suffix: Text('(${selectedAPKs.length})'),
                       onPress: selectedAPKs.isEmpty ? null : _onAddPress,
                       child: Text('Add'),

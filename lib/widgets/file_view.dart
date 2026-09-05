@@ -1,9 +1,8 @@
-import 'package:jett/utils/data.dart' show formatFileSize;
-import 'package:jett/model/resource.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/assets.dart';
 import 'package:forui/widgets/tile.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:jett/model/resource.dart';
+import 'package:jett/utils/data.dart' show formatFileSize;
 import 'package:path/path.dart' as p;
 
 class FileInfoTile extends StatefulWidget {
@@ -39,34 +38,34 @@ class _FileInfoTileState extends State<FileInfoTile> {
       case 'JPEG':
       case 'PNG':
       case 'GIF':
-        icon = FIcons.fileImage;
+        icon = FLucideIcons.fileImage;
         break;
       case 'MP3':
       case 'WAV':
-        icon = FIcons.fileMusic;
+        icon = FLucideIcons.fileMusic;
         break;
       case 'MP4':
       case 'AVI':
       case 'MOV':
-        icon = FIcons.fileVideoCamera;
+        icon = FLucideIcons.fileVideoCamera;
         break;
       case 'ZIP':
       case 'RAR':
-        icon = FIcons.fileArchive;
+        icon = FLucideIcons.fileArchive;
         break;
       case 'PDF':
       case 'DOC':
       case 'DOCX':
-        icon = FIcons.fileType;
+        icon = FLucideIcons.fileType;
         break;
       case 'TXT':
-        icon = FIcons.fileText;
+        icon = FLucideIcons.fileText;
         break;
       case 'APK':
         icon = Icons.android;
         break;
       default:
-        icon = FIcons.file;
+        icon = FLucideIcons.file;
     }
   }
 
@@ -84,7 +83,7 @@ class _FileInfoTileState extends State<FileInfoTile> {
       ),
       suffix: IconButton(
         onPressed: widget.onRemoveTap,
-        icon: Icon(LucideIcons.x),
+        icon: Icon(FLucideIcons.x),
       ),
     );
   }

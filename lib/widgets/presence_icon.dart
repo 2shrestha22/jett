@@ -53,7 +53,7 @@ class _PresenceIconState extends State<PresenceIcon>
               },
             ),
           ),
-          FAvatar.raw(child: Icon(FIcons.radio)),
+          FAvatar.raw(child: Icon(FLucideIcons.radio)),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jett/adaptive_dialog.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence_broadcaster.dart';
 import 'package:jett/discovery/presence_listener.dart';
@@ -23,7 +24,6 @@ import 'package:jett/widgets/file_view.dart';
 import 'package:jett/widgets/picker_buttons.dart';
 import 'package:jett/widgets/presence_view.dart';
 import 'package:jett/widgets/safe_area.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../platform/platform_api.dart';
 
@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context, _, _) {
         final theme = context.theme;
         final address = splitAddress(server.senderIp);
-        return FDialog.adaptive(
+        return AdaptiveDialog(
           title: Text('Incoming File Transfer'),
           body: Column(
             mainAxisSize: MainAxisSize.min,
@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     TextSpan(text: ' wants to send you files.'),
                   ],
-                  style: theme.typography.sm.copyWith(
+                  style: theme.typography.body.sm.copyWith(
                     color: theme.colors.mutedForeground,
                   ),
                 ),
@@ -154,14 +154,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           actions: [
             FButton(
-              style: FButtonStyle.secondary(),
+              variant: .secondary,
               onPress: () {
                 Navigator.pop(context, false);
               },
               child: Text('Decline'),
             ),
             FButton(
-              style: FButtonStyle.primary(),
+              variant: .primary,
               onPress: () {
                 Navigator.pop(context, true);
               },
@@ -202,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             onPressed: () {
               context.push('/about');
             },
-            icon: Icon(LucideIcons.info),
+            icon: Icon(FLucideIcons.info),
           ),
         ],
       ),

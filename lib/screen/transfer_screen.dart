@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:forui/forui.dart';
 import 'package:jett/core/hooks.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/screen/widgets/file_info_stream_builder.dart';
@@ -6,9 +9,7 @@ import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:jett/utils/data.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:forui/forui.dart';
+import 'package:jett/utils/save_path.dart';
 import 'package:rxdart/rxdart.dart';
 
 enum TransferType { send, receive }
@@ -80,7 +81,7 @@ class _TransferScreenState extends State<TransferScreen> {
                       children: [
                         TextSpan(
                           text: (speed).toStringAsFixed(1),
-                          style: context.theme.typography.xl.copyWith(
+                          style: context.theme.typography.body.xl.copyWith(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
                             fontFeatures: [FontFeature.tabularFigures()],
@@ -88,7 +89,7 @@ class _TransferScreenState extends State<TransferScreen> {
                         ),
                         TextSpan(
                           text: ' MB/s', // unit part
-                          style: theme.typography.base.copyWith(
+                          style: theme.typography.body.md.copyWith(
                             color: theme.colors.mutedForeground,
                           ),
                         ),
@@ -103,7 +104,7 @@ class _TransferScreenState extends State<TransferScreen> {
                 showSpeed: false,
               ),
               DefaultTextStyle(
-                style: theme.typography.sm.copyWith(
+                style: theme.typography.body.sm.copyWith(
                   color: theme.colors.mutedForeground,
                 ),
                 child: HookBuilder(
@@ -123,6 +124,47 @@ class _TransferScreenState extends State<TransferScreen> {
                   },
                 ),
               ),
+              if (widget.transferType == TransferType.receive)
+                HookBuilder(
+                  builder: (context) {
+                    final savePath = useFuture(getSavePath());
+                    return savePath.hasData
+                        ? Column(
+                            children: [
+                              Text(
+                                'Files will be saved to:',
+                                style: theme.typography.body.sm.copyWith(
+                                  color: theme.colors.foreground,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: theme.colors.border,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  savePath.data!,
+                                  style: theme.typography.body.xs.copyWith(
+                                    color: theme.colors.foreground,
+                                    fontFamily: 'monospace',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          )
+                        : SizedBox.shrink();
+                  },
+                ),
               SizedBox(height: 50),
               HookBuilder(
                 builder: (context) {
@@ -137,12 +179,12 @@ class _TransferScreenState extends State<TransferScreen> {
                     child: IgnorePointer(
                       ignoring: opacity != 1,
                       child: FButton(
-                        style: FButtonStyle.secondary(),
+                        variant: .secondary,
                         mainAxisSize: MainAxisSize.min,
                         onPress: () {
                           Navigator.pop(context);
                         },
-                        prefix: Icon(FIcons.chevronLeft),
+                        prefix: Icon(FLucideIcons.chevronLeft),
                         child: Text('Back'),
                       ),
                     ),
@@ -154,10 +196,10 @@ class _TransferScreenState extends State<TransferScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 spacing: 6,
                 children: [
-                  Icon(FIcons.radio, size: 18),
+                  Icon(FLucideIcons.radio, size: 18),
                   Text(
                     ipAddress.value ?? '',
-                    style: context.theme.typography.sm,
+                    style: context.theme.typography.body.sm,
                   ),
                 ],
               ),

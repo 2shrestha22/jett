@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:flutter/material.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/utils/io.dart';
-import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 class FileDropRegion extends StatelessWidget {

@@ -28,15 +28,15 @@ class PickerButton extends StatelessWidget {
       children: [
         FButton(
           mainAxisSize: MainAxisSize.min,
-          style: FButtonStyle.secondary(),
+          variant: .secondary,
           onPress: () => _handleFilePick(onResourceAdd),
-          prefix: Icon(FIcons.files),
+          prefix: Icon(FLucideIcons.files),
           child: Text('Files'),
         ),
         if (Platform.isAndroid)
           FButton(
             mainAxisSize: MainAxisSize.min,
-            style: FButtonStyle.secondary(),
+            variant: .secondary,
             onPress: () => _handleApkPick(context, onResourceAdd),
             prefix: Icon(Icons.android),
             child: Text('APKs'),
@@ -46,27 +46,25 @@ class PickerButton extends StatelessWidget {
   }
 
   Widget desktop(BuildContext context) {
-    final theme = context.theme;
-
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: FileDropRegion(
         onResourceAdd: (fileResource) => onResourceAdd([fileResource]),
-        child: FButton.raw(
-          onPress: () => _handleFilePick(onResourceAdd),
+        child: GestureDetector(
+          onTap: () => _handleFilePick(onResourceAdd),
           child: Container(
             padding: EdgeInsets.all(8),
             width: double.infinity,
             height: 200,
             alignment: Alignment.center,
-            decoration: theme.cardStyle.decoration.copyWith(
-              color: theme.colors.primaryForeground,
-            ),
             child: Column(
               spacing: 8,
               mainAxisSize: MainAxisSize.min,
               children: [
-                FAvatar.raw(size: 60, child: Icon(FIcons.filePlus2, size: 30)),
+                FAvatar.raw(
+                  size: 60,
+                  child: Icon(FLucideIcons.filePlus2, size: 30),
+                ),
                 Text(
                   'Drag and drop or select files to share',
                   textAlign: TextAlign.center,
@@ -98,17 +96,17 @@ class PickerButtonBar extends StatelessWidget {
         spacing: 8,
         children:
             [
-                  (() => _handleFilePick(onResourceAdd), FIcons.files),
+                  (() => _handleFilePick(onResourceAdd), FLucideIcons.files),
                   if (Platform.isAndroid)
                     (
                       () => _handleApkPick(context, onResourceAdd),
                       Icons.android,
                     ),
-                  (() => onClear(), FIcons.listX),
+                  (() => onClear(), FLucideIcons.listX),
                 ]
                 .map(
                   (e) => FButton.icon(
-                    style: FButtonStyle.secondary(),
+                    variant: .secondary,
                     onPress: e.$1,
                     child: Icon(e.$2, size: 24),
                   ),
