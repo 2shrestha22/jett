@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
@@ -24,7 +25,7 @@ void main() async {
   }
 
   await SentryFlutter.init((options) {
-    options.dsn = 'https://da32f214874c3089e296dc6c2b95578d@o4507385753567232.ingest.de.sentry.io/4510406156615760';
+    options.dsn = kDebugMode ? '' : 'https://da32f214874c3089e296dc6c2b95578d@o4507385753567232.ingest.de.sentry.io/4510406156615760';
     options.enableAutoSessionTracking = false; // Disable analytics
     options.tracesSampleRate = 0.0; // Disable performance tracing
   }, appRunner: () => runApp(const MyApp()));
