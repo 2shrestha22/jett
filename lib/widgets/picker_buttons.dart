@@ -134,21 +134,16 @@ Future<void> _handleFilePick(
   List<Resource> resourceList = [];
 
   if (result != null && result.isNotEmpty) {
-    if (Platform.isIOS) {
-      await result.first.tryUseAppleScopedResource((
-        hasAccess,
-        pickerPath,
-      ) async {
-        if (hasAccess) {
-          if (pickerPath.uri != null) {
-            resourceList.add(ContentResource(uri: pickerPath.uri!));
-          } else if (pickerPath.path != null) {
-            resourceList.add(FileResource(pickerPath.path!));
-          }
-          onResourceAdd(resourceList);
-        }
-        return;
-      });
+    if (Platform.isIOS || Platform.isMacOS) {
+      // hold security-scoped access open so the files can be read in place
+      // at transfer time; access is released via Resource.release() when
+      // the file leaves the send list
+      for (final file in result) {
+        final hasAccess = await file.accessAppleScopedResource();
+        if (hasAccess != true) continue;
+        resourceList.add(ScopedFileResource(file, hasAccess));
+      }
+      if (resourceList.isNotEmpty) onResourceAdd(resourceList);
     } else {
       resourceList = result.map((e) {
         if (e.uri != null) {
