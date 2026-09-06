@@ -393,8 +393,8 @@ class Server {
         if (data.name != 'files') continue;
         if (session.cancelled) return;
 
-        final fileName = data.filename ?? 'file';
-        final destination = File(path.join(_downloadPath, fileName));
+        final fileName = safeFileName(data.filename);
+        final destination = await _unusedPathFor(fileName);
         _emit(
           session,
           TransferInProgress(
@@ -441,6 +441,21 @@ class Server {
     }
   }
 
+  /// Where to put an incoming [fileName] without destroying anything already
+  /// there. A second "photo.jpg" lands as "photo (1).jpg".
+  Future<File> _unusedPathFor(String fileName) async {
+    final extension = path.extension(fileName);
+    final stem = path.basenameWithoutExtension(fileName);
+
+    var candidate = File(path.join(_downloadPath, fileName));
+    var suffix = 0;
+    while (await candidate.exists()) {
+      suffix++;
+      candidate = File(path.join(_downloadPath, '$stem ($suffix)$extension'));
+    }
+    return candidate;
+  }
+
   Future<void> _deleteQuietly(File file) async {
     try {
       if (await file.exists()) await file.delete();
@@ -484,6 +499,26 @@ class Server {
     _server?.close();
     _server = null;
   }
+}
+
+/// The name a peer asked for, reduced to something that can only land inside
+/// the download directory.
+///
+/// A multipart filename is chosen entirely by the sender. `path.join` returns
+/// an absolute path unchanged and honours `..`, so without this an accepted
+/// peer could write anywhere this process can reach — over a dotfile, into a
+/// config directory, anywhere.
+///
+/// Both separators are stripped whatever the host platform, since the name
+/// crosses between machines and a Windows sender's backslashes mean nothing to
+/// `path.basename` on POSIX.
+String safeFileName(String? requested) {
+  final flattened = (requested ?? '').replaceAll(r'\', '/');
+  final base = flattened.split('/').last.trim();
+
+  if (base.isEmpty || base == '.' || base == '..') return 'file';
+  // a leading dot would hide the file, which a sender should not get to decide
+  return base.startsWith('.') ? base.substring(1) : base;
 }
 
 String _getClientAddress(Request request) {

@@ -117,13 +117,19 @@ class Client {
     HttpClient? httpClient;
 
     try {
-      // Whatever certificate the peer presents is recorded and accepted here;
-      // whether this device is willing to talk to that key is decided below,
-      // where the user can be asked. Nothing is sent before that.
+      // The first connection has nothing to compare against, so its key is
+      // recorded and the decision left to the app layer below, where the user
+      // can be asked. Once that key is known it is pinned: the upload opens a
+      // separate connection on this same client, and without this it would be
+      // free to land on a different key than the one that was verified.
       String? presented;
+      String? pinned;
       httpClient = HttpClient(context: SecurityContext(withTrustedRoots: false))
         ..badCertificateCallback = (certificate, host, port) {
-          presented = keyFingerprintOfDer(certificate.der);
+          final fingerprint = keyFingerprintOfDer(certificate.der);
+          if (fingerprint == null) return false;
+          if (pinned != null) return fingerprint == pinned;
+          presented = fingerprint;
           return true;
         };
 
@@ -137,6 +143,7 @@ class Client {
         throw const SocketException('Peer presented no certificate');
       }
 
+      pinned = peerFingerprint;
       final trusted = trustStore.isTrusted(peerFingerprint);
 
       socket = IOWebSocketChannel(rawSocket);
@@ -160,9 +167,18 @@ class Client {
       // goes away before one arrives.
       final answer = Completer<ControlMessage>();
 
+      // Fires only when the exchange is genuinely over, so a prompt still on
+      // screen can take itself down. Acceptance is not an ending; see
+      // _onFrame.
+      final ended = Completer<void>();
+      void endExchange() {
+        if (!ended.isCompleted) ended.complete();
+      }
+
       frames = socket.stream.listen(
-        (raw) => _onFrame(session, raw, answer),
+        (raw) => _onFrame(session, raw, answer, endExchange),
         onDone: () {
+          endExchange();
           if (!answer.isCompleted) {
             answer.completeError(
               const SocketException('Control socket closed'),
@@ -177,6 +193,7 @@ class Client {
           _abort();
         },
         onError: (Object e) {
+          endExchange();
           if (!answer.isCompleted) answer.completeError(e);
           _abort();
         },
@@ -211,12 +228,7 @@ class Client {
           deviceIdentity.fingerprint,
           peerFingerprint,
         );
-        final confirmed = await onVerify(
-          device.name,
-          words,
-          // settles either way; the prompt only needs to know it is over
-          answer.future.then((_) {}, onError: (_) {}),
-        );
+        final confirmed = await onVerify(device.name, words, ended.future);
         if (!confirmed) {
           socket.sink.add(CancelFrame(sessionId: session).toJson());
           _emit(
@@ -262,7 +274,12 @@ class Client {
     }
   }
 
-  void _onFrame(String session, Object? raw, Completer<ControlMessage> answer) {
+  void _onFrame(
+    String session,
+    Object? raw,
+    Completer<ControlMessage> answer,
+    void Function() onExchangeEnded,
+  ) {
     final ControlMessage frame;
     try {
       frame = ControlMessage.fromJson(raw! as String);
@@ -273,16 +290,25 @@ class Client {
     if (frame.sessionId != session) return;
 
     switch (frame) {
-      case AcceptedFrame() || DeclinedFrame():
+      case AcceptedFrame():
+        // Deliberately not an ending. The words still have to be confirmed
+        // here, and taking that prompt away would answer it for the user —
+        // which, since a dismissed prompt reads as a refusal, would cancel
+        // roughly every transfer where the receiver tapped first.
         if (!answer.isCompleted) answer.complete(frame);
+      case DeclinedFrame():
+        if (!answer.isCompleted) answer.complete(frame);
+        onExchangeEnded();
       case FailedFrame(:final reason):
         _fail(session, reason);
+        onExchangeEnded();
         _abort();
       case CancelFrame():
         _emit(
           session,
           TransferCancelled(sessionId: session, by: CancelledBy.receiver),
         );
+        onExchangeEnded();
         _abort();
       case CompletedFrame():
         // The receiver confirming it has everything is the authoritative
@@ -375,8 +401,8 @@ class Client {
           })
           .whenComplete(streamedRequest.sink.close),
     );
-    // sent through the same pinned client the control socket was opened on,
-    // so the files go to the key the user verified and nowhere else
+    // Sent on the client whose callback now pins the peer's key, so this
+    // connection cannot land anywhere but the device that was verified.
     final httpResponse = await IOClient(httpClient).send(streamedRequest);
 
     if (httpResponse.statusCode == 200) {
