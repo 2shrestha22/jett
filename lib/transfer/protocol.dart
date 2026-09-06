@@ -42,11 +42,23 @@ class RequestFrame extends ControlMessage with RequestFrameMappable {
   /// so a party in the middle cannot make both screens agree.
   final bool requestVerification;
 
+  /// The sender's certificate, and its signature over this session and the
+  /// receiver's fingerprint.
+  ///
+  /// Dart will not present a client certificate during a TLS handshake, so
+  /// without these the receiver would have no idea who was sending. The
+  /// certificate alone proves nothing — it is public — which is why the
+  /// signature travels with it.
+  final String senderCertificate;
+  final String signature;
+
   const RequestFrame({
     required super.sessionId,
     required this.senderName,
     required this.files,
     required this.totalSize,
+    required this.senderCertificate,
+    required this.signature,
     this.requestVerification = false,
     this.protocolVersion = kProtocolVersion,
   });

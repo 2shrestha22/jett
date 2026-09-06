@@ -27,6 +27,10 @@ class DeviceIdentity {
   static late final String certificatePem;
   static late final String privateKeyPem;
 
+  /// Parsed once, because signing every outgoing request would otherwise
+  /// re-parse the PEM each time.
+  static late final ECPrivateKey privateKey;
+
   /// SHA-256 of the certificate's DER encoding, lowercase hex.
   static late final String fingerprint;
 
@@ -62,6 +66,7 @@ class DeviceIdentity {
       privateKeyPem = generated.keyPem;
     }
 
+    privateKey = CryptoUtils.ecPrivateKeyFromPem(privateKeyPem);
     fingerprint = fingerprintOfCertificate(certificatePem);
     alias = deviceAlias(fingerprint);
   }

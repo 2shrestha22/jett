@@ -244,6 +244,16 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     'totalSize',
     _$totalSize,
   );
+  static String _$senderCertificate(RequestFrame v) => v.senderCertificate;
+  static const Field<RequestFrame, String> _f$senderCertificate = Field(
+    'senderCertificate',
+    _$senderCertificate,
+  );
+  static String _$signature(RequestFrame v) => v.signature;
+  static const Field<RequestFrame, String> _f$signature = Field(
+    'signature',
+    _$signature,
+  );
   static bool _$requestVerification(RequestFrame v) => v.requestVerification;
   static const Field<RequestFrame, bool> _f$requestVerification = Field(
     'requestVerification',
@@ -265,6 +275,8 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     #senderName: _f$senderName,
     #files: _f$files,
     #totalSize: _f$totalSize,
+    #senderCertificate: _f$senderCertificate,
+    #signature: _f$signature,
     #requestVerification: _f$requestVerification,
     #protocolVersion: _f$protocolVersion,
   };
@@ -283,6 +295,8 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
       senderName: data.dec(_f$senderName),
       files: data.dec(_f$files),
       totalSize: data.dec(_f$totalSize),
+      senderCertificate: data.dec(_f$senderCertificate),
+      signature: data.dec(_f$signature),
       requestVerification: data.dec(_f$requestVerification),
       protocolVersion: data.dec(_f$protocolVersion),
     );
@@ -362,6 +376,8 @@ abstract class RequestFrameCopyWith<$R, $In extends RequestFrame, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    String? senderCertificate,
+    String? signature,
     bool? requestVerification,
     int? protocolVersion,
   });
@@ -393,6 +409,8 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    String? senderCertificate,
+    String? signature,
     bool? requestVerification,
     int? protocolVersion,
   }) => $apply(
@@ -401,6 +419,8 @@ class _RequestFrameCopyWithImpl<$R, $Out>
       if (senderName != null) #senderName: senderName,
       if (files != null) #files: files,
       if (totalSize != null) #totalSize: totalSize,
+      if (senderCertificate != null) #senderCertificate: senderCertificate,
+      if (signature != null) #signature: signature,
       if (requestVerification != null)
         #requestVerification: requestVerification,
       if (protocolVersion != null) #protocolVersion: protocolVersion,
@@ -412,6 +432,11 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     senderName: data.get(#senderName, or: $value.senderName),
     files: data.get(#files, or: $value.files),
     totalSize: data.get(#totalSize, or: $value.totalSize),
+    senderCertificate: data.get(
+      #senderCertificate,
+      or: $value.senderCertificate,
+    ),
+    signature: data.get(#signature, or: $value.signature),
     requestVerification: data.get(
       #requestVerification,
       or: $value.requestVerification,

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/attestation.dart';
 import 'package:jett/identity/device_identity.dart';
 import 'package:jett/identity/trust_store.dart';
 import 'package:jett/identity/verification.dart';
@@ -29,7 +30,13 @@ typedef _SizedResource = (Resource resource, int length);
 /// Asks the user to confirm a peer's key before anything is sent to it.
 ///
 /// Returns true to go ahead and remember the key.
-typedef TrustPrompt = Future<bool> Function(List<String> words);
+/// [dismissed] completes if the exchange ends while the prompt is still up —
+/// the receiver declined, or hung up — and the prompt should close itself
+/// rather than keep asking about something already over.
+typedef TrustPrompt = Future<bool> Function(
+  List<String> words,
+  Future<void> dismissed,
+);
 
 class Client {
   /// How long to wait for the control socket to come up.
@@ -122,18 +129,6 @@ class Client {
       }
 
       final trusted = trustStore.isTrusted(peerFingerprint);
-      if (!trusted) {
-        final confirmed = await onVerify(verificationWords(peerFingerprint));
-        if (!confirmed) {
-          await rawSocket.close();
-          _emit(
-            session,
-            TransferCancelled(sessionId: session, by: CancelledBy.sender),
-          );
-          return;
-        }
-        await trustStore.trust(peerFingerprint, device.name);
-      }
 
       socket = IOWebSocketChannel(rawSocket);
       // published so reset() can hang up on the receiver, which is what tells
@@ -192,8 +187,30 @@ class Client {
           ],
           totalSize: totalSize,
           requestVerification: !trusted,
+          senderCertificate: DeviceIdentity.certificatePem,
+          signature: signRequest(session, peerFingerprint),
         ).toJson(),
       );
+
+      // Asked only after the request has gone, so the receiver is showing its
+      // words at the same moment these are on screen. There is nothing to
+      // compare against otherwise.
+      if (!trusted) {
+        final confirmed = await onVerify(
+          verificationWords(DeviceIdentity.fingerprint, peerFingerprint),
+          // settles either way; the prompt only needs to know it is over
+          answer.future.then((_) {}, onError: (_) {}),
+        );
+        if (!confirmed) {
+          socket.sink.add(CancelFrame(sessionId: session).toJson());
+          _emit(
+            session,
+            TransferCancelled(sessionId: session, by: CancelledBy.sender),
+          );
+          return;
+        }
+        await trustStore.trust(peerFingerprint, device.name);
+      }
 
       final reply = await answer.future.timeout(_acceptTimeout);
       if (reply is DeclinedFrame) {

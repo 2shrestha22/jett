@@ -5,7 +5,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/attestation.dart';
 import 'package:jett/identity/device_identity.dart';
+import 'package:jett/identity/trust_store.dart';
 import 'package:jett/identity/verification.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/protocol.dart';
@@ -34,7 +36,10 @@ class _Session {
   final List<OfferedFile> files;
   final int totalSize;
 
-  /// The sender is showing verification words, so this device shows its own.
+  /// The sender's fingerprint, proven by the signature on its request.
+  final String senderFingerprint;
+
+  /// Whether the two people still have to compare words for this pair.
   final bool showVerification;
 
   /// Set once the user has approved; only then may the sender upload.
@@ -57,6 +62,7 @@ class _Session {
     required this.senderName,
     required this.files,
     required this.totalSize,
+    required this.senderFingerprint,
     required this.showVerification,
   });
 
@@ -116,9 +122,14 @@ class Server {
   /// Words to show alongside the prompt so the two people can confirm the
   /// sender is really talking to this device. Empty once the sender knows
   /// this device's key.
-  List<String> get verificationPrompt => _session?.showVerification ?? false
-      ? verificationWords(DeviceIdentity.fingerprint)
-      : const [];
+  List<String> get verificationPrompt {
+    final session = _session;
+    if (session == null || !session.showVerification) return const [];
+    return verificationWords(
+      DeviceIdentity.fingerprint,
+      session.senderFingerprint,
+    );
+  }
 
   Future<void> start() async {
     _downloadPath = await getSavePath();
@@ -229,6 +240,19 @@ class Server {
       return;
     }
 
+    // Dart never shows us a client certificate, so the sender proves which
+    // device it is by signing this session and our fingerprint. Without that
+    // there is no identity here to trust or to build the words from.
+    final senderFingerprint = verifiedSenderFingerprint(
+      certificatePem: frame.senderCertificate,
+      signature: frame.signature,
+      sessionId: frame.sessionId,
+    );
+    if (senderFingerprint == null) {
+      refuse(TransferFailure.unverifiedSender);
+      return;
+    }
+
     final current = _session;
     if (current != null && !identical(current.socket, socket)) {
       refuse(TransferFailure.busy);
@@ -246,7 +270,10 @@ class Server {
       senderName: frame.senderName,
       files: frame.files,
       totalSize: frame.totalSize,
-      showVerification: frame.requestVerification,
+      senderFingerprint: senderFingerprint,
+      // either side not knowing the other is reason enough to compare
+      showVerification:
+          frame.requestVerification || !trustStore.isTrusted(senderFingerprint),
     );
     _session = session;
     _stateSessionId = session.id;
@@ -260,6 +287,9 @@ class Server {
     if (session == null || session.accepted || session.closed) return;
 
     session.accepted = true;
+    // accepting is also the moment this device vouches for the sender's key,
+    // so a later transfer from it does not ask again
+    unawaited(trustStore.trust(session.senderFingerprint, session.senderName));
     session.send(AcceptedFrame(sessionId: session.id));
 
     Timer(_uploadStartTimeout, () {

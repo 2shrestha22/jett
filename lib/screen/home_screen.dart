@@ -121,8 +121,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Asks the user to compare this device's words against the ones shown on
   /// the device being sent to, before anything leaves here.
-  Future<bool> _confirmTrust(List<String> words) async {
+  Future<bool> _confirmTrust(List<String> words, Future<void> dismissed) async {
     if (!mounted) return false;
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+    var settled = false;
+    // the other device answered or hung up while this was still on screen
+    unawaited(
+      dismissed.then((_) {
+        if (settled) return;
+        settled = true;
+        navigator.pop();
+      }),
+    );
 
     final confirmed = await showFDialog<bool>(
       context: context,
@@ -174,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
 
+    settled = true;
     return confirmed ?? false;
   }
 

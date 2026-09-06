@@ -20,6 +20,8 @@ String _failureMessage(TransferFailure reason) => switch (reason) {
   TransferFailure.timeout => 'The other device stopped responding',
   TransferFailure.fileUnreadable => 'A file could not be read',
   TransferFailure.storageError => 'The files could not be saved',
+  TransferFailure.unverifiedSender =>
+    'That device could not prove which device it is',
   TransferFailure.versionMismatch =>
     'That device is running a different version of Jett',
   TransferFailure.unknown => 'Transfer failed',
