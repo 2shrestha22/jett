@@ -118,7 +118,10 @@ class Client {
             );
             return;
           }
-          // Dropped while the files were still moving: the peer is gone.
+          // The receiver hangs up as soon as it has told us how the transfer
+          // ended, so a close after a known outcome is just tidying up.
+          if (_isSettled(session)) return;
+          // Otherwise it dropped while the files were still moving.
           _fail(session, TransferFailure.peerUnreachable);
           _abort();
         },
@@ -199,8 +202,11 @@ class Client {
           TransferCancelled(sessionId: session, by: CancelledBy.receiver),
         );
         _abort();
-      case ProgressFrame() || CompletedFrame() || RequestFrame():
-        // the upload response is what settles success here
+      case CompletedFrame():
+        // The receiver confirming it has everything is the authoritative
+        // success signal, and it arrives before the upload response does.
+        _emit(session, TransferCompleted(sessionId: session));
+      case ProgressFrame() || RequestFrame():
         break;
     }
   }
@@ -297,12 +303,18 @@ class Client {
     }
   }
 
+  /// True once [session] has reached an outcome, after which the socket and
+  /// upload unwinding are just noise.
+  bool _isSettled(String session) {
+    final current = _transferStateSubject.value;
+    return current.sessionId == session && current.isTerminal;
+  }
+
   void _emit(String session, TransferState state) {
     if (_stateSessionId != session) return;
     // whatever ended the transfer first is the truthful reason; later noise
     // from unwinding the socket and the upload must not overwrite it
-    final current = _transferStateSubject.value;
-    if (current.sessionId == session && current.isTerminal) return;
+    if (_isSettled(session)) return;
     _transferStateSubject.add(state);
   }
 
