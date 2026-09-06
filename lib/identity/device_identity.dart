@@ -29,6 +29,17 @@ class DeviceIdentity {
   String get certificatePem => keys.certificatePem;
   String get privateKeyPem => keys.privateKeyPem;
 
+  /// Deletes the stored keys, so the next launch mints a new identity.
+  ///
+  /// Not applied to the running app: the server is already serving the old
+  /// certificate and peers have been told the old name, and swapping those
+  /// underneath a live transfer would be worse than asking for a restart.
+  static Future<void> erase() async {
+    final support = await getApplicationSupportDirectory();
+    final directory = Directory(path.join(support.path, 'identity'));
+    if (await directory.exists()) await directory.delete(recursive: true);
+  }
+
   /// Loads the stored identity, minting one on first run.
   ///
   /// The key sits in the app's private support directory rather than the

@@ -42,6 +42,26 @@ void main() {
           expect(store.isTrusted('def'), isFalse);
         });
 
+        test('clearing forgets everything', () async {
+          await store.trust('abc', 'Noble Meadow');
+          await store.trust('def', 'Candid Gull');
+
+          await store.clear();
+
+          expect(store.peers, isEmpty);
+          expect(store.isTrusted('abc'), isFalse);
+          expect(store.isTrusted('def'), isFalse);
+        });
+
+        test('is still usable after being cleared', () async {
+          await store.trust('abc', 'Noble Meadow');
+          await store.clear();
+          await store.trust('ghi', 'Plucky Aspen');
+
+          expect(store.isTrusted('ghi'), isTrue);
+          expect(store.peers, hasLength(1));
+        });
+
         test('a device that changes its key is unknown again', () async {
           // Reinstalling produces a new key. There is nothing stable enough to
           // recognise it by, so it must go through verification afresh.
@@ -78,6 +98,17 @@ void main() {
       final store = FileTrustStore(file);
       await store.load();
       expect(file.existsSync(), isFalse);
+    });
+
+    test('clearing survives a restart', () async {
+      final first = FileTrustStore(file);
+      await first.load();
+      await first.trust('abc', 'Noble Meadow');
+      await first.clear();
+
+      final second = FileTrustStore(file);
+      await second.load();
+      expect(second.isTrusted('abc'), isFalse);
     });
 
     test('a corrupt file costs re-verification, not a crash', () async {

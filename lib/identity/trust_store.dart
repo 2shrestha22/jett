@@ -44,6 +44,9 @@ abstract class TrustStore {
   bool isTrusted(String fingerprint);
   Future<void> trust(String fingerprint, String name);
   List<TrustedPeer> get peers;
+
+  /// Forgets every key, so each peer is verified afresh.
+  Future<void> clear();
 }
 
 /// A [TrustStore] that forgets everything when the process ends. For tests.
@@ -64,6 +67,9 @@ class InMemoryTrustStore implements TrustStore {
       trustedAt: DateTime.now(),
     );
   }
+
+  @override
+  Future<void> clear() async => _peers.clear();
 }
 
 /// A [TrustStore] backed by a JSON file beside the device's keys.
@@ -120,6 +126,16 @@ class FileTrustStore implements TrustStore {
       );
     } catch (e, s) {
       log('Could not save the trust store', error: e, stackTrace: s);
+    }
+  }
+
+  @override
+  Future<void> clear() async {
+    _peers.clear();
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (e, s) {
+      log('Could not delete the trust store', error: e, stackTrace: s);
     }
   }
 }
