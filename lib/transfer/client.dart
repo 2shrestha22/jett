@@ -15,25 +15,29 @@ import 'package:rxdart/subjects.dart';
 final client = Client();
 
 class Client {
+  /// How long the receiving device is given to answer the request before we
+  /// assume nobody is going to.
+  static const _acceptTimeout = Duration(minutes: 2);
+
   final _speedometer = Speedometer();
 
   ValueStream<SpeedometerReading?> get speedometerReadingsStream =>
       _speedometer.readingStream;
 
-  final _fileNameSubject = BehaviorSubject<String>();
-  Stream<String> get fileNameStream => _fileNameSubject.stream.distinct();
-
   final _transferStateSubject = BehaviorSubject<TransferState>.seeded(
-    TransferState.idle,
+    const TransferIdle(),
   );
   ValueStream<TransferState> get transferState => _transferStateSubject;
 
   Completer<void>? _abortTrigger;
 
-  /// Identifies the current transfer attempt. Emissions from an attempt that
-  /// has since been superseded or reset are dropped, so a stale result can
-  /// never overwrite the state of a newer one.
-  int _session = 0;
+  int _sessionCounter = 0;
+
+  /// Whose states are currently being published. Emissions from a superseded
+  /// or reset attempt are dropped rather than overwriting a newer one.
+  String? _stateSessionId;
+
+  String? _currentFileName;
 
   /// Asks [ipAddr] to accept a transfer and, once accepted, uploads
   /// [resources]. The transfer runs in the background so the caller can show
@@ -43,58 +47,62 @@ class Client {
   /// active; the caller should not navigate to the transfer screen in that
   /// case.
   bool startUpload(List<Resource> resources, String ipAddr) {
-    if (_transferStateSubject.value != TransferState.idle) return false;
+    if (_transferStateSubject.value is! TransferIdle) return false;
 
-    final session = ++_session;
+    final session = '${++_sessionCounter}';
+    _stateSessionId = session;
     _abortTrigger = Completer<void>();
-    _emit(session, TransferState.waiting);
+    _currentFileName = null;
+
+    _transferStateSubject.add(
+      TransferWaiting(sessionId: session, peerAddress: ipAddr),
+    );
     unawaited(_run(session, resources, ipAddr));
     return true;
   }
 
   Future<void> _run(
-    int session,
+    String session,
     List<Resource> resources,
     String ipAddr,
   ) async {
     final httpClient = http.Client();
     try {
       final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
-      final response = await httpClient
-          .get(uri)
-          .timeout(const Duration(seconds: 60));
+      final response = await httpClient.get(uri).timeout(_acceptTimeout);
 
       if (response.statusCode != 200) {
-        _emit(session, TransferState.failed);
+        _fail(session, _failureForStatus(response.statusCode));
         return;
       }
 
-      _emit(session, TransferState.inProgress);
+      _emit(
+        session,
+        TransferInProgress(sessionId: session, peerAddress: ipAddr),
+      );
       await _upload(session, resources, ipAddr);
+    } on TimeoutException {
+      _fail(session, TransferFailure.timeout);
+    } on SocketException catch (e) {
+      log('Could not reach $ipAddr', error: e);
+      _fail(session, TransferFailure.peerUnreachable);
+    } on FileSystemException catch (e) {
+      log('Could not read a file to send', error: e);
+      _fail(session, TransferFailure.fileUnreadable);
     } catch (e, s) {
       log('Transfer failed', error: e, stackTrace: s);
-      _emit(session, TransferState.failed);
+      _fail(session, TransferFailure.unknown);
     } finally {
       httpClient.close();
       _speedometer.stop();
     }
   }
 
-  void _emit(int session, TransferState state) {
-    if (session != _session) return;
-    _transferStateSubject.add(state);
-  }
-
-  void _abort() {
-    final trigger = _abortTrigger;
-    if (trigger != null && !trigger.isCompleted) trigger.complete();
-  }
-
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
   Future<void> _upload(
-    int session,
+    String session,
     List<Resource> resources,
     String ipAddr,
   ) async {
@@ -129,7 +137,17 @@ class Client {
         StreamTransformer<List<int>, List<int>>.fromHandlers(
           handleData: (data, sink) {
             sink.add(data);
-            _fileNameSubject.add(resource.name);
+            if (_currentFileName != resource.name) {
+              _currentFileName = resource.name;
+              _emit(
+                session,
+                TransferInProgress(
+                  sessionId: session,
+                  peerAddress: ipAddr,
+                  fileName: resource.name,
+                ),
+              );
+            }
             _speedometer.count(data.length);
           },
           handleError: (error, stack, sink) => sink.addError(error, stack),
@@ -175,23 +193,44 @@ class Client {
     if (httpResponse.statusCode == 200) {
       final response = await _readResponseAsString(httpResponse);
       log(response);
-      _emit(session, TransferState.completed);
+      _emit(session, TransferCompleted(sessionId: session));
     } else {
-      _emit(session, TransferState.failed);
+      _fail(session, _failureForStatus(httpResponse.statusCode));
     }
   }
 
-  /// Aborts any in-flight transfer and returns to [TransferState.idle] so a new
+  void _emit(String session, TransferState state) {
+    if (_stateSessionId != session) return;
+    _transferStateSubject.add(state);
+  }
+
+  void _fail(String session, TransferFailure reason) =>
+      _emit(session, TransferFailed(sessionId: session, reason: reason));
+
+  void _abort() {
+    final trigger = _abortTrigger;
+    if (trigger != null && !trigger.isCompleted) trigger.complete();
+  }
+
+  /// Aborts any in-flight transfer and returns to [TransferIdle] so a new
   /// transfer can be started.
   void reset() {
     // invalidate the running attempt so its result cannot land after this
-    _session++;
+    _stateSessionId = null;
     _abort();
     _abortTrigger = null;
+    _currentFileName = null;
     _speedometer.reset();
-    _transferStateSubject.add(TransferState.idle);
+    _transferStateSubject.add(const TransferIdle());
   }
 }
+
+TransferFailure _failureForStatus(int statusCode) => switch (statusCode) {
+  403 => TransferFailure.declined,
+  409 => TransferFailure.busy,
+  408 => TransferFailure.timeout,
+  _ => TransferFailure.unknown,
+};
 
 Future<String> _readResponseAsString(http.StreamedResponse response) {
   final completer = Completer<String>();
