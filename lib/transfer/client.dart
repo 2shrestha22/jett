@@ -3,9 +3,14 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/trust_store.dart';
+import 'package:jett/identity/verification.dart';
+import 'package:jett/model/device.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/protocol.dart';
@@ -20,6 +25,14 @@ final client = Client();
 
 /// A resource paired with the size it reported when the transfer was offered.
 typedef _SizedResource = (Resource resource, int length);
+
+/// Asks the user to confirm a peer's key before anything is sent to it.
+///
+/// Returns true to go ahead and remember the key.
+typedef TrustPrompt = Future<bool> Function(
+  TrustDecision decision,
+  List<String> words,
+);
 
 class Client {
   /// How long to wait for the control socket to come up.
@@ -59,7 +72,11 @@ class Client {
   /// Returns false without starting anything when a transfer is already
   /// active; the caller should not navigate to the transfer screen in that
   /// case.
-  bool startUpload(List<Resource> resources, String ipAddr) {
+  bool startUpload(
+    List<Resource> resources,
+    Device device,
+    TrustPrompt onVerify,
+  ) {
     if (_transferStateSubject.value is! TransferIdle) return false;
 
     final session =
@@ -69,26 +86,62 @@ class Client {
     _currentFileName = null;
 
     _transferStateSubject.add(
-      TransferWaiting(sessionId: session, peerAddress: ipAddr),
+      TransferWaiting(sessionId: session, peerAddress: device.ipAddress),
     );
-    unawaited(_run(session, resources, ipAddr));
+    unawaited(_run(session, resources, device, onVerify));
     return true;
   }
 
   Future<void> _run(
     String session,
     List<Resource> resources,
-    String ipAddr,
+    Device device,
+    TrustPrompt onVerify,
   ) async {
+    final ipAddr = device.ipAddress;
     WebSocketChannel? socket;
     StreamSubscription<dynamic>? frames;
+    HttpClient? httpClient;
 
     try {
-      socket = IOWebSocketChannel.connect(
-        Uri.parse('ws://$ipAddr:$kTcpPort/ws'),
-        connectTimeout: _connectTimeout,
-      );
-      await socket.ready;
+      // Whatever certificate the peer presents is recorded and accepted here;
+      // whether this device is willing to talk to that key is decided below,
+      // where the user can be asked. Nothing is sent before that.
+      String? presented;
+      httpClient = HttpClient(context: SecurityContext(withTrustedRoots: false))
+        ..badCertificateCallback = (certificate, host, port) {
+          presented = sha256.convert(certificate.der).toString();
+          return true;
+        };
+
+      final rawSocket = await WebSocket.connect(
+        'wss://$ipAddr:$kTcpPort/ws',
+        customClient: httpClient,
+      ).timeout(_connectTimeout);
+
+      final peerFingerprint = presented;
+      if (peerFingerprint == null) {
+        throw const SocketException('Peer presented no certificate');
+      }
+
+      final decision = trustStore.decide(device, peerFingerprint);
+      if (decision != TrustDecision.known) {
+        final confirmed = await onVerify(
+          decision,
+          verificationWords(peerFingerprint),
+        );
+        if (!confirmed) {
+          await rawSocket.close();
+          _emit(
+            session,
+            TransferCancelled(sessionId: session, by: CancelledBy.sender),
+          );
+          return;
+        }
+        await trustStore.trust(peerFingerprint, device.name);
+      }
+
+      socket = IOWebSocketChannel(rawSocket);
       // published so reset() can hang up on the receiver, which is what tells
       // it we have gone; waiting for this method to unwind would not, since
       // it spends most of its life parked on the receiver's answer
@@ -144,12 +197,13 @@ class Client {
               ),
           ],
           totalSize: totalSize,
+          requestVerification: decision != TrustDecision.known,
         ).toJson(),
       );
 
-      final decision = await answer.future.timeout(_acceptTimeout);
-      if (decision is DeclinedFrame) {
-        _fail(session, decision.reason);
+      final reply = await answer.future.timeout(_acceptTimeout);
+      if (reply is DeclinedFrame) {
+        _fail(session, reply.reason);
         return;
       }
 
@@ -157,7 +211,7 @@ class Client {
         session,
         TransferInProgress(sessionId: session, peerAddress: ipAddr),
       );
-      await _upload(session, sized, totalSize, ipAddr);
+      await _upload(session, sized, totalSize, ipAddr, httpClient);
     } on TimeoutException {
       _fail(session, TransferFailure.timeout);
     } on WebSocketChannelException catch (e) {
@@ -176,6 +230,7 @@ class Client {
       await frames?.cancel();
       if (identical(_socket, socket)) _socket = null;
       await socket?.sink.close();
+      httpClient?.close(force: true);
       _speedometer.stop();
     }
   }
@@ -219,6 +274,7 @@ class Client {
     List<_SizedResource> resources,
     int totalFileSize,
     String ipAddr,
+    HttpClient httpClient,
   ) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
@@ -226,7 +282,7 @@ class Client {
     _speedometer.reset();
     _speedometer.fileSize = totalFileSize;
 
-    final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload?session=$session');
+    final uri = Uri.parse('https://$ipAddr:$kTcpPort/upload?session=$session');
 
     final streamedRequest = http.AbortableStreamedRequest(
       'POST',
@@ -292,7 +348,9 @@ class Client {
           })
           .whenComplete(streamedRequest.sink.close),
     );
-    final httpResponse = await streamedRequest.send();
+    // sent through the same pinned client the control socket was opened on,
+    // so the files go to the key the user verified and nowhere else
+    final httpResponse = await IOClient(httpClient).send(streamedRequest);
 
     if (httpResponse.statusCode == 200) {
       final response = await _readResponseAsString(httpResponse);

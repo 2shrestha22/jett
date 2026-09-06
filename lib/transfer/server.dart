@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/device_identity.dart';
+import 'package:jett/identity/verification.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
@@ -31,6 +34,9 @@ class _Session {
   final List<OfferedFile> files;
   final int totalSize;
 
+  /// The sender is showing verification words, so this device shows its own.
+  final bool showVerification;
+
   /// Set once the user has approved; only then may the sender upload.
   bool accepted = false;
 
@@ -51,6 +57,7 @@ class _Session {
     required this.senderName,
     required this.files,
     required this.totalSize,
+    required this.showVerification,
   });
 
   void send(ControlMessage frame) {
@@ -106,6 +113,13 @@ class Server {
   List<OfferedFile> get offeredFiles => _session?.files ?? const [];
   int get offeredTotalSize => _session?.totalSize ?? 0;
 
+  /// Words to show alongside the prompt so the two people can confirm the
+  /// sender is really talking to this device. Empty once the sender knows
+  /// this device's key.
+  List<String> get verificationPrompt => _session?.showVerification ?? false
+      ? verificationWords(DeviceIdentity.fingerprint)
+      : const [];
+
   Future<void> start() async {
     _downloadPath = await getSavePath();
 
@@ -117,7 +131,19 @@ class Server {
         .addMiddleware(logRequests())
         .addHandler(_router.call);
 
-    _server = await io.serve(handler, InternetAddress.anyIPv4, kTcpPort);
+    // Served under this device's own certificate. Senders pin it by
+    // fingerprint, which is what the verification words let the two people
+    // confirm the first time round.
+    final security = SecurityContext(withTrustedRoots: false)
+      ..useCertificateChainBytes(utf8.encode(DeviceIdentity.certificatePem))
+      ..usePrivateKeyBytes(utf8.encode(DeviceIdentity.privateKeyPem));
+
+    _server = await io.serve(
+      handler,
+      InternetAddress.anyIPv4,
+      kTcpPort,
+      securityContext: security,
+    );
   }
 
   FutureOr<Response> _handleControlSocket(Request request) {
@@ -220,6 +246,7 @@ class Server {
       senderName: frame.senderName,
       files: frame.files,
       totalSize: frame.totalSize,
+      showVerification: frame.requestVerification,
     );
     _session = session;
     _stateSessionId = session.id;

@@ -5,6 +5,7 @@ import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/identity/device_identity.dart';
+import 'package:jett/identity/trust_store.dart';
 import 'package:jett/platform/platform_api.dart';
 import 'package:jett/screen/about_screen.dart';
 import 'package:jett/screen/apk_picker_screen.dart';
@@ -24,6 +25,8 @@ void main() async {
     DeviceInfoHelper.init(),
     DeviceIdentity.init(),
   ]);
+  // needs the identity directory, so it runs after the wait above
+  await trustStore.init();
 
   if (Platform.isAndroid || Platform.isIOS) {
     PlatformApi.instance.init();

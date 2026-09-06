@@ -244,6 +244,13 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     'totalSize',
     _$totalSize,
   );
+  static bool _$requestVerification(RequestFrame v) => v.requestVerification;
+  static const Field<RequestFrame, bool> _f$requestVerification = Field(
+    'requestVerification',
+    _$requestVerification,
+    opt: true,
+    def: false,
+  );
   static int _$protocolVersion(RequestFrame v) => v.protocolVersion;
   static const Field<RequestFrame, int> _f$protocolVersion = Field(
     'protocolVersion',
@@ -258,6 +265,7 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     #senderName: _f$senderName,
     #files: _f$files,
     #totalSize: _f$totalSize,
+    #requestVerification: _f$requestVerification,
     #protocolVersion: _f$protocolVersion,
   };
 
@@ -275,6 +283,7 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
       senderName: data.dec(_f$senderName),
       files: data.dec(_f$files),
       totalSize: data.dec(_f$totalSize),
+      requestVerification: data.dec(_f$requestVerification),
       protocolVersion: data.dec(_f$protocolVersion),
     );
   }
@@ -353,6 +362,7 @@ abstract class RequestFrameCopyWith<$R, $In extends RequestFrame, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    bool? requestVerification,
     int? protocolVersion,
   });
   RequestFrameCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
@@ -383,6 +393,7 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    bool? requestVerification,
     int? protocolVersion,
   }) => $apply(
     FieldCopyWithData({
@@ -390,6 +401,8 @@ class _RequestFrameCopyWithImpl<$R, $Out>
       if (senderName != null) #senderName: senderName,
       if (files != null) #files: files,
       if (totalSize != null) #totalSize: totalSize,
+      if (requestVerification != null)
+        #requestVerification: requestVerification,
       if (protocolVersion != null) #protocolVersion: protocolVersion,
     }),
   );
@@ -399,6 +412,10 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     senderName: data.get(#senderName, or: $value.senderName),
     files: data.get(#files, or: $value.files),
     totalSize: data.get(#totalSize, or: $value.totalSize),
+    requestVerification: data.get(
+      #requestVerification,
+      or: $value.requestVerification,
+    ),
     protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
   );
 

@@ -34,11 +34,20 @@ class RequestFrame extends ControlMessage with RequestFrameMappable {
   final List<OfferedFile> files;
   final int totalSize;
 
+  /// The sender does not know this device's key yet and is showing the
+  /// verification words, so this device should show its own for comparison.
+  ///
+  /// Only a request to display something. The words themselves are never
+  /// sent: each side derives them from the certificate it holds or was shown,
+  /// so a party in the middle cannot make both screens agree.
+  final bool requestVerification;
+
   const RequestFrame({
     required super.sessionId,
     required this.senderName,
     required this.files,
     required this.totalSize,
+    this.requestVerification = false,
     this.protocolVersion = kProtocolVersion,
   });
 }

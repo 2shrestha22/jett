@@ -9,6 +9,7 @@ import 'package:jett/adaptive_dialog.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence_broadcaster.dart';
 import 'package:jett/discovery/presence_listener.dart';
+import 'package:jett/identity/trust_store.dart';
 import 'package:jett/model/device.dart';
 import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
@@ -119,6 +120,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Closes the prompt currently on screen, if any, without answering it.
   VoidCallback? _closePrompt;
 
+  /// Asks the user to compare this device's words against the ones shown on
+  /// the device being sent to, before anything leaves here.
+  Future<bool> _confirmTrust(TrustDecision decision, List<String> words) async {
+    if (!mounted) return false;
+    final changed = decision == TrustDecision.keyChanged;
+
+    final confirmed = await showFDialog<bool>(
+      context: context,
+      builder: (context, _, _) {
+        final theme = context.theme;
+        return AdaptiveDialog(
+          title: Text(changed ? 'This device has a new key' : 'Verify device'),
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
+            children: [
+              Text(
+                changed
+                    ? 'You have sent to a device with this name before, but it '
+                          'is using a different key. Reinstalling Jett does '
+                          'this. So does something pretending to be it.'
+                    : 'Check these words match the ones shown on the other '
+                          'device.',
+                style: theme.typography.body.sm.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colors.border),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  words.join('   '),
+                  textAlign: TextAlign.center,
+                  style: theme.typography.body.md.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FButton(
+              variant: .secondary,
+              onPress: () => Navigator.pop(context, false),
+              child: Text('Cancel'),
+            ),
+            FButton(
+              variant: .primary,
+              onPress: () => Navigator.pop(context, true),
+              child: Text(changed ? 'Send anyway' : 'They match'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed ?? false;
+  }
+
   Future<void> _initServer() async {
     server.transferState.listen((state) {
       // The sender dropped its socket, was superseded, or moved on: take the
@@ -150,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final senderName = server.senderName;
     final files = server.offeredFiles;
     final totalSize = server.offeredTotalSize;
+    final words = server.verificationPrompt;
 
     _promptedSession = sessionId;
     var settled = false;
@@ -171,7 +237,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           title: Text('Incoming File Transfer'),
           body: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
             children: [
               RichText(
                 text: TextSpan(
@@ -191,6 +258,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+              // shown only until the sender knows this device's key
+              if (words.isNotEmpty) ...[
+                Text(
+                  'Check these words match the ones on the sending device.',
+                  style: theme.typography.body.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: theme.colors.border),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    words.join('   '),
+                    textAlign: TextAlign.center,
+                    style: theme.typography.body.md.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -340,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           onTap: (device) async {
             // a transfer is already running, ignore the tap instead of
             // starting a second one that would clobber its state
-            if (!client.startUpload(resources, device.ipAddress)) return;
+            if (!client.startUpload(resources, device, _confirmTrust)) return;
             await context.push('/send');
             client.reset();
           },
