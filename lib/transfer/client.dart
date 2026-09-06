@@ -41,6 +41,9 @@ class Client {
 
   Completer<void>? _abortTrigger;
 
+  /// The live control socket, while there is one.
+  WebSocketChannel? _socket;
+
   int _sessionCounter = 0;
 
   /// Whose states are currently being published. Emissions from a superseded
@@ -86,6 +89,10 @@ class Client {
         connectTimeout: _connectTimeout,
       );
       await socket.ready;
+      // published so reset() can hang up on the receiver, which is what tells
+      // it we have gone; waiting for this method to unwind would not, since
+      // it spends most of its life parked on the receiver's answer
+      _socket = socket;
 
       final sized = <_SizedResource>[];
       var totalSize = 0;
@@ -164,6 +171,7 @@ class Client {
       _fail(session, TransferFailure.unknown);
     } finally {
       await frames?.cancel();
+      if (identical(_socket, socket)) _socket = null;
       await socket?.sink.close();
       _speedometer.stop();
     }
@@ -315,6 +323,24 @@ class Client {
   /// Aborts any in-flight transfer and returns to [TransferIdle] so a new
   /// transfer can be started.
   void reset() {
+    final session = _stateSessionId;
+    final socket = _socket;
+    _socket = null;
+
+    // Hang up so the receiver learns we are gone now, rather than when our
+    // own timeout eventually expires. Closing is the part that matters; the
+    // frame is a courtesy for a peer still reading.
+    if (socket != null) {
+      if (session != null) {
+        try {
+          socket.sink.add(CancelFrame(sessionId: session).toJson());
+        } catch (e) {
+          log('Could not announce cancellation', error: e);
+        }
+      }
+      unawaited(socket.sink.close().catchError((Object _) {}));
+    }
+
     // invalidate the running attempt so its result cannot land after this
     _stateSessionId = null;
     _abort();

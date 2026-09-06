@@ -37,8 +37,9 @@ class _Session {
   /// Set once bytes start arriving.
   bool uploading = false;
 
-  /// Set when this side gives up, which stops the file loop.
-  bool cancelled = false;
+  /// Who gave up, once somebody has. Stops the file loop.
+  CancelledBy? cancelledBy;
+  bool get cancelled => cancelledBy != null;
 
   /// Set when the control socket is gone; nothing more can be sent on it.
   bool closed = false;
@@ -133,7 +134,7 @@ class Server {
       final session = _session;
       if (session == null || !identical(session.socket, socket)) return;
       session.closed = true;
-      session.cancelled = true;
+      session.cancelledBy = CancelledBy.sender;
       // An upload in flight will notice `cancelled` and publish its own
       // ending; otherwise the sender left mid-prompt and we drop to idle,
       // which is what dismisses the dialog.
@@ -158,7 +159,7 @@ class Server {
             if (session != null &&
                 session.id == frame.sessionId &&
                 identical(session.socket, socket)) {
-              session.cancelled = true;
+              session.cancelledBy = CancelledBy.sender;
               if (!session.uploading) {
                 _endSession(session, const TransferIdle());
               }
@@ -294,13 +295,14 @@ class Server {
       _speedometer.stop();
     }
 
-    if (session.cancelled) {
+    final cancelledBy = session.cancelledBy;
+    if (cancelledBy != null) {
       session.hangUp();
       _endSession(
         session,
-        TransferCancelled(sessionId: session.id, by: CancelledBy.receiver),
+        TransferCancelled(sessionId: session.id, by: cancelledBy),
       );
-      return Response.badRequest(body: 'Cancelled on the receiving device');
+      return Response.badRequest(body: 'Cancelled');
     }
 
     session.send(CompletedFrame(sessionId: session.id));
@@ -396,7 +398,7 @@ class Server {
   void reset() {
     final session = _session;
     if (session != null) {
-      session.cancelled = true;
+      session.cancelledBy = CancelledBy.receiver;
       if (!session.closed) {
         session.send(CancelFrame(sessionId: session.id));
         session.hangUp();
