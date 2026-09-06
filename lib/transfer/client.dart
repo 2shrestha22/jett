@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/device_identity.dart';
 import 'package:jett/identity/trust_store.dart';
 import 'package:jett/identity/verification.dart';
 import 'package:jett/model/device.dart';
@@ -15,7 +16,6 @@ import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
-import 'package:jett/utils/device_info.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:web_socket_channel/io.dart';
@@ -181,7 +181,7 @@ class Client {
       socket.sink.add(
         RequestFrame(
           sessionId: session,
-          senderName: DeviceInfoHelper.deviceName,
+          senderName: DeviceIdentity.alias,
           files: [
             for (final (resource, length) in sized)
               OfferedFile(

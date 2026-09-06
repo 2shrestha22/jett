@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:basic_utils/basic_utils.dart';
 import 'package:crypto/crypto.dart';
+import 'package:jett/identity/device_alias.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -29,6 +30,18 @@ class DeviceIdentity {
   /// SHA-256 of the certificate's DER encoding, lowercase hex.
   static late final String fingerprint;
 
+  /// What this device calls itself to other devices, e.g. "Amber Falcon".
+  ///
+  /// Generated rather than taken from the operating system, for three
+  /// reasons. Platform names are not unique — every Linux machine reports its
+  /// distribution, and every phone of a given model reports the same build
+  /// name — so devices were indistinguishable in the list. They are also not
+  /// private: a Mac reports whatever the owner called it, which is usually
+  /// their real name, announced to everyone on the network. And being derived
+  /// from the key, this name changes when the key does, so it never claims to
+  /// be a device the user has verified when it is not.
+  static late final String alias;
+
   static Future<void> init() async {
     final support = await getApplicationSupportDirectory();
     final directory = Directory(path.join(support.path, 'identity'));
@@ -50,6 +63,7 @@ class DeviceIdentity {
     }
 
     fingerprint = fingerprintOfCertificate(certificatePem);
+    alias = deviceAlias(fingerprint);
   }
 
   static ({String certPem, String keyPem}) _generate() {

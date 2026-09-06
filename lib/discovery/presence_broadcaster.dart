@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/identity/device_identity.dart';
 import 'package:jett/model/message.dart';
-import 'package:jett/utils/device_info.dart';
 
 class PresenceBroadcaster {
   final _multicastAddress = InternetAddress(kAddress);
   final _baseMessage = Message(
-    name: DeviceInfoHelper.deviceName,
+    name: DeviceIdentity.alias,
     protocolVersion: kProtocolVersion,
     fingerprint: DeviceIdentity.fingerprint,
   );

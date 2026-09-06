@@ -12,7 +12,6 @@ import 'package:jett/screen/apk_picker_screen.dart';
 import 'package:jett/screen/home_screen.dart';
 import 'package:jett/screen/transfer_screen.dart';
 import 'package:jett/theme/theme.dart';
-import 'package:jett/utils/device_info.dart';
 import 'package:jett/utils/package_info.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -20,11 +19,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Future.wait([
-    PackageInfoHelper.init(),
-    DeviceInfoHelper.init(),
-    DeviceIdentity.init(),
-  ]);
+  await Future.wait([PackageInfoHelper.init(), DeviceIdentity.init()]);
   // needs the identity directory, so it runs after the wait above
   await trustStore.init();
 

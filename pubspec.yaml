@@ -40,7 +40,6 @@ dependencies:
   path: ^1.9.1
   package_info_plus: ^10.2.1
   dart_mappable: ^4.6.0
-  device_info_plus: ^13.2.0
   flutter_animate: ^4.5.2
   forui: ^0.26.0
   forui_assets: ^0.25.0
