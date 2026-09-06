@@ -29,15 +29,26 @@ class DeviceMapper extends ClassMapperBase<Device> {
   );
   static String _$name(Device v) => v.name;
   static const Field<Device, String> _f$name = Field('name', _$name);
+  static int? _$protocolVersion(Device v) => v.protocolVersion;
+  static const Field<Device, int> _f$protocolVersion = Field(
+    'protocolVersion',
+    _$protocolVersion,
+    opt: true,
+  );
 
   @override
   final MappableFields<Device> fields = const {
     #ipAddress: _f$ipAddress,
     #name: _f$name,
+    #protocolVersion: _f$protocolVersion,
   };
 
   static Device _instantiate(DecodingData data) {
-    return Device(ipAddress: data.dec(_f$ipAddress), name: data.dec(_f$name));
+    return Device(
+      ipAddress: data.dec(_f$ipAddress),
+      name: data.dec(_f$name),
+      protocolVersion: data.dec(_f$protocolVersion),
+    );
   }
 
   @override
@@ -86,7 +97,7 @@ extension DeviceValueCopy<$R, $Out> on ObjectCopyWith<$R, Device, $Out> {
 
 abstract class DeviceCopyWith<$R, $In extends Device, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? ipAddress, String? name});
+  $R call({String? ipAddress, String? name, int? protocolVersion});
   DeviceCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -97,16 +108,19 @@ class _DeviceCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Device, $Out>
   @override
   late final ClassMapperBase<Device> $mapper = DeviceMapper.ensureInitialized();
   @override
-  $R call({String? ipAddress, String? name}) => $apply(
-    FieldCopyWithData({
-      if (ipAddress != null) #ipAddress: ipAddress,
-      if (name != null) #name: name,
-    }),
-  );
+  $R call({String? ipAddress, String? name, Object? protocolVersion = $none}) =>
+      $apply(
+        FieldCopyWithData({
+          if (ipAddress != null) #ipAddress: ipAddress,
+          if (name != null) #name: name,
+          if (protocolVersion != $none) #protocolVersion: protocolVersion,
+        }),
+      );
   @override
   Device $make(CopyWithData data) => Device(
     ipAddress: data.get(#ipAddress, or: $value.ipAddress),
     name: data.get(#name, or: $value.name),
+    protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
   );
 
   @override

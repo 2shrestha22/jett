@@ -8,15 +8,25 @@ import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
+import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
+import 'package:jett/utils/device_info.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 final client = Client();
 
+/// A resource paired with the size it reported when the transfer was offered.
+typedef _SizedResource = (Resource resource, int length);
+
 class Client {
-  /// How long the receiving device is given to answer the request before we
-  /// assume nobody is going to.
+  /// How long to wait for the control socket to come up.
+  static const _connectTimeout = Duration(seconds: 10);
+
+  /// How long the receiving device is given to answer before we assume nobody
+  /// is going to.
   static const _acceptTimeout = Duration(minutes: 2);
 
   final _speedometer = Speedometer();
@@ -49,7 +59,8 @@ class Client {
   bool startUpload(List<Resource> resources, String ipAddr) {
     if (_transferStateSubject.value is! TransferIdle) return false;
 
-    final session = '${++_sessionCounter}';
+    final session =
+        '${DateTime.now().microsecondsSinceEpoch}-${++_sessionCounter}';
     _stateSessionId = session;
     _abortTrigger = Completer<void>();
     _currentFileName = null;
@@ -66,13 +77,69 @@ class Client {
     List<Resource> resources,
     String ipAddr,
   ) async {
-    final httpClient = http.Client();
-    try {
-      final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
-      final response = await httpClient.get(uri).timeout(_acceptTimeout);
+    WebSocketChannel? socket;
+    StreamSubscription<dynamic>? frames;
 
-      if (response.statusCode != 200) {
-        _fail(session, _failureForStatus(response.statusCode));
+    try {
+      socket = IOWebSocketChannel.connect(
+        Uri.parse('ws://$ipAddr:$kTcpPort/ws'),
+        connectTimeout: _connectTimeout,
+      );
+      await socket.ready;
+
+      final sized = <_SizedResource>[];
+      var totalSize = 0;
+      for (final resource in resources) {
+        final length = await resource.length();
+        if (length == null) {
+          throw FileSystemException('Cannot read file', resource.identifier);
+        }
+        sized.add((resource, length));
+        totalSize += length;
+      }
+
+      // Completes with the receiver's answer, or with an error if the socket
+      // goes away before one arrives.
+      final answer = Completer<ControlMessage>();
+
+      frames = socket.stream.listen(
+        (raw) => _onFrame(session, raw, answer),
+        onDone: () {
+          if (!answer.isCompleted) {
+            answer.completeError(
+              const SocketException('Control socket closed'),
+            );
+            return;
+          }
+          // Dropped while the files were still moving: the peer is gone.
+          _fail(session, TransferFailure.peerUnreachable);
+          _abort();
+        },
+        onError: (Object e) {
+          if (!answer.isCompleted) answer.completeError(e);
+          _abort();
+        },
+      );
+
+      socket.sink.add(
+        RequestFrame(
+          sessionId: session,
+          senderName: DeviceInfoHelper.deviceName,
+          files: [
+            for (final (resource, length) in sized)
+              OfferedFile(
+                name: resource.name,
+                size: length,
+                mimeType: resource.mimeType,
+              ),
+          ],
+          totalSize: totalSize,
+        ).toJson(),
+      );
+
+      final decision = await answer.future.timeout(_acceptTimeout);
+      if (decision is DeclinedFrame) {
+        _fail(session, decision.reason);
         return;
       }
 
@@ -80,9 +147,12 @@ class Client {
         session,
         TransferInProgress(sessionId: session, peerAddress: ipAddr),
       );
-      await _upload(session, resources, ipAddr);
+      await _upload(session, sized, totalSize, ipAddr);
     } on TimeoutException {
       _fail(session, TransferFailure.timeout);
+    } on WebSocketChannelException catch (e) {
+      log('Could not open a control socket to $ipAddr', error: e);
+      _fail(session, TransferFailure.peerUnreachable);
     } on SocketException catch (e) {
       log('Could not reach $ipAddr', error: e);
       _fail(session, TransferFailure.peerUnreachable);
@@ -93,8 +163,41 @@ class Client {
       log('Transfer failed', error: e, stackTrace: s);
       _fail(session, TransferFailure.unknown);
     } finally {
-      httpClient.close();
+      await frames?.cancel();
+      await socket?.sink.close();
       _speedometer.stop();
+    }
+  }
+
+  void _onFrame(
+    String session,
+    Object? raw,
+    Completer<ControlMessage> answer,
+  ) {
+    final ControlMessage frame;
+    try {
+      frame = ControlMessage.fromJson(raw! as String);
+    } catch (e) {
+      log('Unreadable control frame', error: e);
+      return;
+    }
+    if (frame.sessionId != session) return;
+
+    switch (frame) {
+      case AcceptedFrame() || DeclinedFrame():
+        if (!answer.isCompleted) answer.complete(frame);
+      case FailedFrame(:final reason):
+        _fail(session, reason);
+        _abort();
+      case CancelFrame():
+        _emit(
+          session,
+          TransferCancelled(sessionId: session, by: CancelledBy.receiver),
+        );
+        _abort();
+      case ProgressFrame() || CompletedFrame() || RequestFrame():
+        // the upload response is what settles success here
+        break;
     }
   }
 
@@ -103,16 +206,19 @@ class Client {
   /// You should only upload files after the transfer request is accepted.
   Future<void> _upload(
     String session,
-    List<Resource> resources,
+    List<_SizedResource> resources,
+    int totalFileSize,
     String ipAddr,
   ) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
 
     _speedometer.reset();
+    _speedometer.fileSize = totalFileSize;
 
-    int totalFileSize = 0;
-    final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload');
+    final uri = Uri.parse(
+      'http://$ipAddr:$kTcpPort/upload?session=$session',
+    );
 
     final streamedRequest = http.AbortableStreamedRequest(
       'POST',
@@ -123,15 +229,7 @@ class Client {
     // create a multipart request body stream
     // and add speedometer counting to each file stream
     final requestMultipart = http.MultipartRequest('POST', uri);
-    for (var resource in resources) {
-      final contentLenght = await resource.length();
-
-      if (contentLenght == null) {
-        throw FileSystemException('Cannot read file', resource.identifier);
-      }
-
-      totalFileSize += contentLenght;
-
+    for (final (resource, contentLength) in resources) {
       final contentStream = resource.openRead().cast<List<int>>();
       final fileStream = contentStream.transform(
         StreamTransformer<List<int>, List<int>>.fromHandlers(
@@ -158,16 +256,14 @@ class Client {
         http.MultipartFile(
           'files',
           fileStream,
-          contentLenght,
+          contentLength,
           filename: resource.name,
           contentType: _getContentType(resource.mimeType),
         ),
       );
     }
-    _speedometer.fileSize = totalFileSize;
     final multipartRequestBodyStream = requestMultipart.finalize();
 
-    streamedRequest.headers.addAll({'x-file-size': totalFileSize.toString()});
     // content type header is only avaiable after finalizing the request
     final multipartHeader =
         requestMultipart.headers[HttpHeaders.contentTypeHeader];
@@ -201,6 +297,10 @@ class Client {
 
   void _emit(String session, TransferState state) {
     if (_stateSessionId != session) return;
+    // whatever ended the transfer first is the truthful reason; later noise
+    // from unwinding the socket and the upload must not overwrite it
+    final current = _transferStateSubject.value;
+    if (current.sessionId == session && current.isTerminal) return;
     _transferStateSubject.add(state);
   }
 

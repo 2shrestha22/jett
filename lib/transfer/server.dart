@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/transfer_status.dart';
+import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:jett/utils/save_path.dart';
 import 'package:path/path.dart' as path;
@@ -13,45 +14,71 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_multipart/shelf_multipart.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 const disableFileWrite = kDebugMode;
 
 final server = Server();
 
-/// One incoming transfer, from the moment the sender asks until it finishes.
+/// One incoming transfer, tied to the control socket that opened it. The
+/// socket closing is what tells us the sender is gone.
 class _Session {
   final String id;
   final String peerAddress;
-
-  /// Replaced when the same peer re-sends its request, which supersedes the
-  /// earlier one without disturbing the prompt already on screen.
-  Completer<bool> acceptance = Completer<bool>();
+  final WebSocketChannel socket;
+  final String senderName;
+  final List<OfferedFile> files;
+  final int totalSize;
 
   /// Set once the user has approved; only then may the sender upload.
   bool accepted = false;
 
-  /// Set once bytes start arriving. Until then the peer is still free to
-  /// restart its request.
+  /// Set once bytes start arriving.
   bool uploading = false;
 
-  /// Set when the receiving side gives up, which stops the file loop.
+  /// Set when this side gives up, which stops the file loop.
   bool cancelled = false;
 
-  _Session(this.id, this.peerAddress);
+  /// Set when the control socket is gone; nothing more can be sent on it.
+  bool closed = false;
+
+  _Session({
+    required this.id,
+    required this.peerAddress,
+    required this.socket,
+    required this.senderName,
+    required this.files,
+    required this.totalSize,
+  });
+
+  void send(ControlMessage frame) {
+    if (closed) return;
+    try {
+      socket.sink.add(frame.toJson());
+    } catch (e) {
+      log('Could not send ${frame.runtimeType} to $peerAddress', error: e);
+    }
+  }
+
+  void hangUp() {
+    if (closed) return;
+    closed = true;
+    unawaited(socket.sink.close());
+  }
 }
 
 class Server {
-  /// How long the sender is kept waiting before we assume nobody is at the
-  /// receiving device. Generous, because someone has to notice and respond.
-  static const _acceptTimeout = Duration(minutes: 2);
+  /// How long an accepted transfer may sit before any bytes arrive. Guards
+  /// against a sender that is accepted and then stops without dropping its
+  /// socket.
+  static const _uploadStartTimeout = Duration(seconds: 30);
 
   /// How long a stalled upload is tolerated before the transfer is failed.
   static const _chunkTimeout = Duration(seconds: 10);
 
-  /// How long an accepted transfer may sit before any bytes arrive. Guards
-  /// against a sender that disappears between being accepted and uploading,
-  /// which would otherwise hold the slot against every other peer.
-  static const _uploadStartTimeout = Duration(seconds: 30);
+  /// Progress is reported to the sender no more often than this.
+  static const _progressInterval = Duration(milliseconds: 300);
 
   final _router = Router();
   HttpServer? _server;
@@ -68,19 +95,21 @@ class Server {
   ValueStream<TransferState> get transferState => _transferStateSubject;
 
   _Session? _session;
-  int _sessionCounter = 0;
 
   /// Whose states are currently being published. Emissions from any other
   /// session are dropped, so a superseded attempt cannot overwrite a newer one.
   String? _stateSessionId;
 
   String get senderIp => _session?.peerAddress ?? '';
+  String get senderName => _session?.senderName ?? '';
+  List<OfferedFile> get offeredFiles => _session?.files ?? const [];
+  int get offeredTotalSize => _session?.totalSize ?? 0;
 
   Future<void> start() async {
     _downloadPath = await getSavePath();
 
     _router
-      ..get('/request', _handleRequest)
+      ..get('/ws', _handleControlSocket)
       ..post('/upload', _handleUpload);
 
     final handler = const Pipeline()
@@ -90,84 +119,149 @@ class Server {
     _server = await io.serve(handler, InternetAddress.anyIPv4, kTcpPort);
   }
 
-  void acceptRequest() => _answer(true);
-  void rejectRequest() => _answer(false);
-
-  void _answer(bool accepted) {
-    final session = _session;
-    if (session == null || session.acceptance.isCompleted) return;
-    session.acceptance.complete(accepted);
+  FutureOr<Response> _handleControlSocket(Request request) {
+    final peer = _getClientAddress(request);
+    // built per request because the peer address is only available here
+    final handler = webSocketHandler(
+      (WebSocketChannel socket, _) => _onControlSocket(socket, peer),
+    );
+    return handler(request);
   }
 
-  Future<Response> _handleRequest(Request request) async {
-    final peer = _getClientAddress(request);
-    final current = _session;
-
-    // Only a peer that restarted its own request before any bytes moved may
-    // take over; everyone else waits their turn.
-    if (current != null && (current.uploading || current.peerAddress != peer)) {
-      return Response(409, body: 'Another transfer is in progress');
+  void _onControlSocket(WebSocketChannel socket, String peer) {
+    void socketGone() {
+      final session = _session;
+      if (session == null || !identical(session.socket, socket)) return;
+      session.closed = true;
+      session.cancelled = true;
+      // An upload in flight will notice `cancelled` and publish its own
+      // ending; otherwise the sender left mid-prompt and we drop to idle,
+      // which is what dismisses the dialog.
+      if (!session.uploading) _endSession(session, const TransferIdle());
     }
 
-    final _Session session;
-    if (current != null && !current.accepted) {
-      // Still on the same prompt, so reuse the session and let the dialog
-      // already on screen answer this newer request instead of asking twice.
-      session = current;
-      if (!session.acceptance.isCompleted) session.acceptance.complete(false);
-      session.acceptance = Completer<bool>();
-    } else {
-      if (current != null && !current.acceptance.isCompleted) {
-        current.acceptance.complete(false);
+    socket.stream.listen(
+      (raw) {
+        final ControlMessage frame;
+        try {
+          frame = ControlMessage.fromJson(raw as String);
+        } catch (e) {
+          log('Unreadable control frame from $peer', error: e);
+          return;
+        }
+
+        switch (frame) {
+          case RequestFrame():
+            _onRequestFrame(frame, socket, peer);
+          case CancelFrame():
+            final session = _session;
+            if (session != null &&
+                session.id == frame.sessionId &&
+                identical(session.socket, socket)) {
+              session.cancelled = true;
+              if (!session.uploading) {
+                _endSession(session, const TransferIdle());
+              }
+            }
+          case AcceptedFrame() ||
+              DeclinedFrame() ||
+              ProgressFrame() ||
+              CompletedFrame() ||
+              FailedFrame():
+            // receiver-to-sender frames; nothing to do with them here
+            break;
+        }
+      },
+      onDone: socketGone,
+      onError: (Object e) {
+        log('Control socket error from $peer', error: e);
+        socketGone();
+      },
+      cancelOnError: true,
+    );
+  }
+
+  void _onRequestFrame(RequestFrame frame, WebSocketChannel socket, String peer) {
+    void refuse(TransferFailure reason) {
+      try {
+        socket.sink.add(
+          DeclinedFrame(sessionId: frame.sessionId, reason: reason).toJson(),
+        );
+      } catch (_) {
+        // the socket is already gone; nothing to tell them on
       }
-      session = _Session('${++_sessionCounter}', peer);
-      _session = session;
-      _stateSessionId = session.id;
-      _transferStateSubject.add(
-        TransferWaiting(sessionId: session.id, peerAddress: peer),
-      );
+      unawaited(socket.sink.close());
     }
 
-    final acceptance = session.acceptance;
-    final bool accepted;
-    try {
-      accepted = await acceptance.future.timeout(_acceptTimeout);
-    } on TimeoutException {
-      _endSession(session, const TransferIdle());
-      return Response(408, body: 'No answer from the receiving device');
+    if (frame.protocolVersion != kProtocolVersion) {
+      refuse(TransferFailure.versionMismatch);
+      return;
     }
 
-    // A newer request from the same peer took this session over; this call is
-    // only here to unblock the connection it arrived on.
-    if (!identical(session.acceptance, acceptance)) {
-      return Response(409, body: 'Superseded by a newer request');
+    final current = _session;
+    if (current != null && !identical(current.socket, socket)) {
+      refuse(TransferFailure.busy);
+      return;
+    }
+    if (current != null && current.uploading) {
+      refuse(TransferFailure.busy);
+      return;
     }
 
-    if (!accepted) {
-      // Declining is not a failure on this side; drop straight back to idle.
-      _endSession(session, const TransferIdle());
-      return Response.forbidden('Transfer declined');
-    }
+    final session = _Session(
+      id: frame.sessionId,
+      peerAddress: peer,
+      socket: socket,
+      senderName: frame.senderName,
+      files: frame.files,
+      totalSize: frame.totalSize,
+    );
+    _session = session;
+    _stateSessionId = session.id;
+    _transferStateSubject.add(
+      TransferWaiting(sessionId: session.id, peerAddress: peer),
+    );
+  }
+
+  void acceptRequest() {
+    final session = _session;
+    if (session == null || session.accepted || session.closed) return;
 
     session.accepted = true;
+    session.send(AcceptedFrame(sessionId: session.id));
+
     Timer(_uploadStartTimeout, () {
       if (!identical(_session, session) || session.uploading) return;
+      session.send(
+        FailedFrame(sessionId: session.id, reason: TransferFailure.timeout),
+      );
+      session.hangUp();
       _endSession(session, const TransferIdle());
     });
-    return Response.ok('Request accepted');
+  }
+
+  void rejectRequest() {
+    final session = _session;
+    if (session == null || session.accepted) return;
+
+    session.send(
+      DeclinedFrame(sessionId: session.id, reason: TransferFailure.declined),
+    );
+    session.hangUp();
+    // Declining is not a failure on this side; drop straight back to idle.
+    _endSession(session, const TransferIdle());
   }
 
   Future<Response> _handleUpload(Request request) async {
     final session = _session;
     final peer = _getClientAddress(request);
+    final sessionId = request.url.queryParameters['session'];
 
-    if (session == null || !session.accepted || session.peerAddress != peer) {
+    if (session == null ||
+        session.id != sessionId ||
+        !session.accepted ||
+        session.peerAddress != peer) {
       return Response.forbidden('No accepted transfer for this peer');
-    }
-
-    final totalFileSize = int.tryParse(request.headers['x-file-size'] ?? '');
-    if (totalFileSize == null) {
-      return Response(400, body: 'Missing or invalid x-file-size header');
     }
 
     final contentType = request.headers['content-type'];
@@ -177,7 +271,7 @@ class Server {
 
     session.uploading = true;
     _speedometer.reset();
-    _speedometer.fileSize = totalFileSize;
+    _speedometer.fileSize = session.totalSize;
     _emit(
       session,
       TransferInProgress(sessionId: session.id, peerAddress: peer),
@@ -186,21 +280,22 @@ class Server {
     try {
       await _receiveFiles(request, session);
     } on TimeoutException {
-      _endSession(session, _failure(session, TransferFailure.timeout));
+      _finishFailed(session, TransferFailure.timeout);
       return Response(408, body: 'The sender stopped responding');
     } on FileSystemException catch (e, s) {
       log('Could not write received files', error: e, stackTrace: s);
-      _endSession(session, _failure(session, TransferFailure.storageError));
+      _finishFailed(session, TransferFailure.storageError);
       return Response.internalServerError(body: 'Could not save the files');
     } catch (e, s) {
       log('Receiving failed', error: e, stackTrace: s);
-      _endSession(session, _failure(session, TransferFailure.unknown));
+      _finishFailed(session, TransferFailure.unknown);
       return Response.internalServerError(body: 'Transfer failed');
     } finally {
       _speedometer.stop();
     }
 
     if (session.cancelled) {
+      session.hangUp();
       _endSession(
         session,
         TransferCancelled(sessionId: session.id, by: CancelledBy.receiver),
@@ -208,12 +303,22 @@ class Server {
       return Response.badRequest(body: 'Cancelled on the receiving device');
     }
 
+    session.send(CompletedFrame(sessionId: session.id));
+    session.hangUp();
     _endSession(session, TransferCompleted(sessionId: session.id));
     return Response.ok('File uploaded');
   }
 
+  void _finishFailed(_Session session, TransferFailure reason) {
+    session.send(FailedFrame(sessionId: session.id, reason: reason));
+    session.hangUp();
+    _endSession(session, TransferFailed(sessionId: session.id, reason: reason));
+  }
+
   Future<void> _receiveFiles(Request request, _Session session) async {
     if (request.formData() case var form?) {
+      var lastProgress = DateTime.now();
+
       await for (final data in form.formData) {
         if (data.name != 'files') continue;
         if (session.cancelled) return;
@@ -236,6 +341,20 @@ class Server {
             if (session.cancelled) return;
             if (!disableFileWrite) sink.add(chunk);
             _speedometer.count(chunk.length);
+
+            final now = DateTime.now();
+            if (now.difference(lastProgress) >= _progressInterval) {
+              lastProgress = now;
+              session.send(
+                ProgressFrame(
+                  sessionId: session.id,
+                  bytesReceived:
+                      _speedometer.readingStream.value?.totalBytesTransferred ??
+                      0,
+                  fileName: fileName,
+                ),
+              );
+            }
           }
           await sink.flush();
           complete = true;
@@ -260,9 +379,6 @@ class Server {
     }
   }
 
-  TransferState _failure(_Session session, TransferFailure reason) =>
-      TransferFailed(sessionId: session.id, reason: reason);
-
   void _emit(_Session session, TransferState state) {
     if (_stateSessionId != session.id) return;
     _transferStateSubject.add(state);
@@ -278,7 +394,14 @@ class Server {
 
   /// Abandons any transfer in flight and returns to idle.
   void reset() {
-    _session?.cancelled = true;
+    final session = _session;
+    if (session != null) {
+      session.cancelled = true;
+      if (!session.closed) {
+        session.send(CancelFrame(sessionId: session.id));
+        session.hangUp();
+      }
+    }
     _session = null;
     _stateSessionId = null;
     _speedometer.reset();
