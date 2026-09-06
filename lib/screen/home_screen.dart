@@ -99,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _initListener();
   }
 
-  void _notifierUpdateCallback(Message message, String ipAddress, int port) {
+  void _notifierUpdateCallback(Message message, String ipAddress) {
     presenceNotifier.update(
-      Device(ipAddress: ipAddress, port: port, name: message.name),
+      Device(ipAddress: ipAddress, name: message.name),
       message.available,
     );
   }
@@ -288,8 +288,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         OnlineDevices(
           notifier: presenceNotifier,
           onTap: (device) async {
-            await client.requestUpload(resources, device.ipAddress);
-            if (mounted) await context.push('/send');
+            // a transfer is already running, ignore the tap instead of
+            // starting a second one that would clobber its state
+            if (!client.startUpload(resources, device.ipAddress)) return;
+            await context.push('/send');
             client.reset();
           },
         ),

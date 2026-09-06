@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/device.dart';
@@ -8,37 +7,37 @@ import 'package:flutter/widgets.dart';
 class PresenceNotifier extends ChangeNotifier {
   PresenceNotifier() {
     _timer = Timer.periodic(cleanUpInterval, (timer) {
-      if (_activeDevices.isEmpty) return;
+      if (_devices.isEmpty) return;
 
-      bool mutated = false;
-      _activeDevices.removeWhere((device) {
-        final duration = DateTime.now().difference(
-          _lastSeenHashMap[device.ipAddress]!,
-        );
-        mutated = duration > deviceTimeout;
-        return mutated;
-      });
-      if (mutated) notifyListeners();
+      final now = DateTime.now();
+      final expired = [
+        for (final entry in _devices.entries)
+          if (now.difference(entry.value.lastSeen) > deviceTimeout) entry.key,
+      ];
+
+      if (expired.isEmpty) return;
+      expired.forEach(_devices.remove);
+      notifyListeners();
     });
   }
 
-  final Set<Device> _activeDevices = {};
-  List<Device> get devices => _activeDevices.toList();
-  final _lastSeenHashMap = HashMap<String, DateTime>(); // <IP, LastSeen>
+  /// Keyed by IP address so a peer that restarts replaces its previous entry
+  /// instead of appearing twice. Insertion order gives the list a stable order.
+  final _devices = <String, _Entry>{};
 
-  late Timer _timer;
+  late final Timer _timer;
+
+  List<Device> get devices => [for (final e in _devices.values) e.device];
 
   void update(Device device, bool available) {
-    bool mutated = false;
-    // update the last seen time
     if (!available) {
-      mutated = _activeDevices.remove(device);
-      _lastSeenHashMap.remove(device.ipAddress);
-    } else {
-      mutated = _activeDevices.add(device);
-      _lastSeenHashMap[device.ipAddress] = DateTime.now();
+      if (_devices.remove(device.ipAddress) != null) notifyListeners();
+      return;
     }
-    if (mutated) notifyListeners();
+
+    final previous = _devices[device.ipAddress];
+    _devices[device.ipAddress] = _Entry(device, DateTime.now());
+    if (previous == null || previous.device != device) notifyListeners();
   }
 
   @override
@@ -49,6 +48,13 @@ class PresenceNotifier extends ChangeNotifier {
 
   @override
   String toString() {
-    return 'ActiveDevices(devices: ${_activeDevices.map((d) => d.toString()).join(', ')})';
+    return 'ActiveDevices(devices: ${devices.map((d) => d.toString()).join(', ')})';
   }
+}
+
+class _Entry {
+  final Device device;
+  final DateTime lastSeen;
+
+  const _Entry(this.device, this.lastSeen);
 }

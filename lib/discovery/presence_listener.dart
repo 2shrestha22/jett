@@ -5,11 +5,7 @@ import 'package:jett/discovery/konst.dart';
 import 'package:jett/model/message.dart';
 import 'package:jett/utils/network.dart';
 
-typedef OnMessageCallback = void Function(
-  Message message,
-  String address,
-  int port,
-);
+typedef OnMessageCallback = void Function(Message message, String address);
 
 class PresenceListener {
   final _multicastAddress = InternetAddress(kAddress);
@@ -43,7 +39,7 @@ class PresenceListener {
             final message = Message.fromJson(
               String.fromCharCodes(datagram.data),
             );
-            onMessage(message, datagram.address.address, datagram.port);
+            onMessage(message, datagram.address.address);
           }
         }
       }
