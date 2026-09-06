@@ -28,11 +28,21 @@ typedef _SizedResource = (Resource resource, int length);
 
 /// Asks the user to confirm a peer's key before anything is sent to it.
 ///
-/// Returns true to go ahead and remember the key.
+/// This is the decision that matters. Under an attack the device answering is
+/// the attacker, so a confirmation on the real receiver's screen would never
+/// be reached — the sending side is the only one that can refuse in time.
+///
+/// [peerName] is what that device broadcast, so the person knows which screen
+/// to look at. It is unauthenticated, and does not need to be: a wrong name
+/// still produces words that do not match.
+///
 /// [dismissed] completes if the exchange ends while the prompt is still up —
 /// the receiver declined, or hung up — and the prompt should close itself
 /// rather than keep asking about something already over.
+///
+/// Returns true to go ahead and remember the key.
 typedef TrustPrompt = Future<bool> Function(
+  String peerName,
   List<String> words,
   Future<void> dismissed,
 );
@@ -202,6 +212,7 @@ class Client {
           peerFingerprint,
         );
         final confirmed = await onVerify(
+          device.name,
           words,
           // settles either way; the prompt only needs to know it is over
           answer.future.then((_) {}, onError: (_) {}),

@@ -121,7 +121,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Asks the user to compare this device's words against the ones shown on
   /// the device being sent to, before anything leaves here.
-  Future<bool> _confirmTrust(List<String> words, Future<void> dismissed) async {
+  Future<bool> _confirmTrust(
+    String peerName,
+    List<String> words,
+    Future<void> dismissed,
+  ) async {
     if (!mounted) return false;
 
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -146,10 +150,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 12,
             children: [
-              Text(
-                'Check these words match the ones shown on the other device.',
-                style: theme.typography.body.sm.copyWith(
-                  color: theme.colors.mutedForeground,
+              // Names the device so the person knows which screen to compare
+              // against; nothing else competes with the words here.
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(text: 'Does '),
+                    TextSpan(
+                      text: peerName,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: ' show these same words?'),
+                  ],
+                  style: theme.typography.body.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
                 ),
               ),
               Container(
@@ -173,12 +188,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             FButton(
               variant: .secondary,
               onPress: () => Navigator.pop(context, false),
-              child: Text('Cancel'),
+              child: Text('Doesn\'t match'),
             ),
             FButton(
               variant: .primary,
               onPress: () => Navigator.pop(context, true),
-              child: Text('They match'),
+              child: Text('Yes, send'),
             ),
           ],
         );
@@ -266,10 +281,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-              // shown only until the sender knows this device's key
+              // Reference material, not a second question. The decision about
+              // whether the words match is made on the sending device, which
+              // is the only side that can refuse in time to matter. Accepting
+              // here is about the files.
               if (words.isNotEmpty) ...[
                 Text(
-                  'Check these words match the ones on the sending device.',
+                  'This device is showing these words to '
+                  '${senderName.isEmpty ? 'the sender' : senderName}.',
                   style: theme.typography.body.sm.copyWith(
                     color: theme.colors.mutedForeground,
                   ),
