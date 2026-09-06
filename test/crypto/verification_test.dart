@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -74,6 +75,28 @@ void main() {
         );
       }
       expect(seen, hasLength(5000));
+    });
+  });
+
+  group('off the calling isolate', () {
+    test('agrees with the inline derivation', () async {
+      // Exercises the real isolate hop. Isolate.run ships the closure's whole
+      // enclosing scope, so a version written at a call site next to a socket
+      // or a Completer compiles and analyses cleanly, then throws at run time
+      // on an unsendable object. Only actually running it catches that.
+      expect(
+        await verificationWordsOffIsolate(alice, bob),
+        verificationWords(alice, bob),
+      );
+    });
+
+    test('carries nothing unsendable across', () async {
+      // Guards the same hazard from the other direction: a locally captured
+      // unsendable object must not creep into the helper's scope.
+      final unsendable = Completer<void>();
+      final words = await verificationWordsOffIsolate(alice, bob);
+      expect(words, hasLength(kVerificationWordCount));
+      expect(unsendable.isCompleted, isFalse);
     });
   });
 

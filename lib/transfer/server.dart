@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
@@ -130,9 +129,10 @@ class Server {
   Future<List<String>> verificationPrompt() async {
     final session = _session;
     if (session == null || !session.showVerification) return const [];
-    final mine = deviceIdentity.fingerprint;
-    final theirs = session.senderFingerprint;
-    return Isolate.run(() => verificationWords(mine, theirs));
+    return verificationWordsOffIsolate(
+      deviceIdentity.fingerprint,
+      session.senderFingerprint,
+    );
   }
 
   Future<void> start() async {

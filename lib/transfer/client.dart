@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -198,10 +197,9 @@ class Client {
       // words at the same moment these are on screen. There is nothing to
       // compare against otherwise.
       if (!trusted) {
-        final mine = deviceIdentity.fingerprint;
-        // off the main isolate; the derivation is deliberately slow
-        final words = await Isolate.run(
-          () => verificationWords(mine, peerFingerprint),
+        final words = await verificationWordsOffIsolate(
+          deviceIdentity.fingerprint,
+          peerFingerprint,
         );
         final confirmed = await onVerify(
           words,

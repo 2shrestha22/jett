@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:jett/crypto/wordlists/verification_words.dart';
@@ -20,6 +21,20 @@ const int kVerificationWordCount = 5;
 /// security-critical mistakes as the string gets longer, so the extra words
 /// would partly be paid for in missed mismatches.
 const int kVerificationRounds = 100000;
+
+/// [verificationWords], computed off the calling isolate.
+///
+/// The derivation is deliberately slow, so running it inline freezes the
+/// screen just as the prompt is about to appear.
+///
+/// This has to be its own function. `Isolate.run` ships the closure's entire
+/// enclosing scope, not merely what the closure reads, so a closure written
+/// at either call site drags along a Completer or a socket and fails at run
+/// time with an unsendable-object error. Here the scope holds two strings.
+Future<List<String>> verificationWordsOffIsolate(
+  String fingerprintA,
+  String fingerprintB,
+) => Isolate.run(() => verificationWords(fingerprintA, fingerprintB));
 
 /// The words two devices show before trusting each other for the first time.
 ///
