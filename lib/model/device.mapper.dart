@@ -27,24 +27,17 @@ class DeviceMapper extends ClassMapperBase<Device> {
     'ipAddress',
     _$ipAddress,
   );
-  static int _$port(Device v) => v.port;
-  static const Field<Device, int> _f$port = Field('port', _$port);
   static String _$name(Device v) => v.name;
   static const Field<Device, String> _f$name = Field('name', _$name);
 
   @override
   final MappableFields<Device> fields = const {
     #ipAddress: _f$ipAddress,
-    #port: _f$port,
     #name: _f$name,
   };
 
   static Device _instantiate(DecodingData data) {
-    return Device(
-      ipAddress: data.dec(_f$ipAddress),
-      port: data.dec(_f$port),
-      name: data.dec(_f$name),
-    );
+    return Device(ipAddress: data.dec(_f$ipAddress), name: data.dec(_f$name));
   }
 
   @override
@@ -93,7 +86,7 @@ extension DeviceValueCopy<$R, $Out> on ObjectCopyWith<$R, Device, $Out> {
 
 abstract class DeviceCopyWith<$R, $In extends Device, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? ipAddress, int? port, String? name});
+  $R call({String? ipAddress, String? name});
   DeviceCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -104,17 +97,15 @@ class _DeviceCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Device, $Out>
   @override
   late final ClassMapperBase<Device> $mapper = DeviceMapper.ensureInitialized();
   @override
-  $R call({String? ipAddress, int? port, String? name}) => $apply(
+  $R call({String? ipAddress, String? name}) => $apply(
     FieldCopyWithData({
       if (ipAddress != null) #ipAddress: ipAddress,
-      if (port != null) #port: port,
       if (name != null) #name: name,
     }),
   );
   @override
   Device $make(CopyWithData data) => Device(
     ipAddress: data.get(#ipAddress, or: $value.ipAddress),
-    port: data.get(#port, or: $value.port),
     name: data.get(#name, or: $value.name),
   );
 

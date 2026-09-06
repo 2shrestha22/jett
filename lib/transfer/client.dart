@@ -30,30 +30,74 @@ class Client {
 
   Completer<void>? _abortTrigger;
 
-  // final _transferStatus = BehaviorSubject<TransferStatus>();
-  // Stream<TransferStatus> get transferStatus =>
-  //     _transferStatus.stream.distinct();
+  /// Identifies the current transfer attempt. Emissions from an attempt that
+  /// has since been superseded or reset are dropped, so a stale result can
+  /// never overwrite the state of a newer one.
+  int _session = 0;
 
-  /// Retruns true if the transfer request is accepted by the receiver.
-  Future<void> requestUpload(List<Resource> resources, String ipAddr) async {
-    _transferStateSubject.add(TransferState.waiting);
+  /// Asks [ipAddr] to accept a transfer and, once accepted, uploads
+  /// [resources]. The transfer runs in the background so the caller can show
+  /// progress while it happens.
+  ///
+  /// Returns false without starting anything when a transfer is already
+  /// active; the caller should not navigate to the transfer screen in that
+  /// case.
+  bool startUpload(List<Resource> resources, String ipAddr) {
+    if (_transferStateSubject.value != TransferState.idle) return false;
+
+    final session = ++_session;
     _abortTrigger = Completer<void>();
+    _emit(session, TransferState.waiting);
+    unawaited(_run(session, resources, ipAddr));
+    return true;
+  }
 
-    final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
-    final response = await http.Client().get(uri);
+  Future<void> _run(
+    int session,
+    List<Resource> resources,
+    String ipAddr,
+  ) async {
+    final httpClient = http.Client();
+    try {
+      final uri = Uri.parse('http://$ipAddr:$kTcpPort/request');
+      final response = await httpClient
+          .get(uri)
+          .timeout(const Duration(seconds: 60));
 
-    if (response.statusCode == 200) {
-      _transferStateSubject.add(TransferState.inProgress);
-      await _upload(resources, ipAddr);
-    } else {
-      _transferStateSubject.add(TransferState.failed);
+      if (response.statusCode != 200) {
+        _emit(session, TransferState.failed);
+        return;
+      }
+
+      _emit(session, TransferState.inProgress);
+      await _upload(session, resources, ipAddr);
+    } catch (e, s) {
+      log('Transfer failed', error: e, stackTrace: s);
+      _emit(session, TransferState.failed);
+    } finally {
+      httpClient.close();
+      _speedometer.stop();
     }
+  }
+
+  void _emit(int session, TransferState state) {
+    if (session != _session) return;
+    _transferStateSubject.add(state);
+  }
+
+  void _abort() {
+    final trigger = _abortTrigger;
+    if (trigger != null && !trigger.isCompleted) trigger.complete();
   }
 
   /// Uploads files to the specified IP address.
   ///
   /// You should only upload files after the transfer request is accepted.
-  Future<void> _upload(List<Resource> resources, String ipAddr) async {
+  Future<void> _upload(
+    int session,
+    List<Resource> resources,
+    String ipAddr,
+  ) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
 
@@ -74,7 +118,9 @@ class Client {
     for (var resource in resources) {
       final contentLenght = await resource.length();
 
-      if (contentLenght == null) return;
+      if (contentLenght == null) {
+        throw FileSystemException('Cannot read file', resource.identifier);
+      }
 
       totalFileSize += contentLenght;
 
@@ -86,14 +132,8 @@ class Client {
             _fileNameSubject.add(resource.name);
             _speedometer.count(data.length);
           },
-          handleError: (error, stack, sink) {
-            _speedometer.stop();
-            throw error;
-          },
-          handleDone: (sink) {
-            _speedometer.stop();
-            sink.close();
-          },
+          handleError: (error, stack, sink) => sink.addError(error, stack),
+          handleDone: (sink) => sink.close(),
         ),
       );
       requestMultipart.files.add(
@@ -122,24 +162,34 @@ class Client {
     unawaited(
       streamedRequest.sink
           .addStream(multipartRequestBodyStream)
-          .then((_) => streamedRequest.sink.close()),
+          .catchError((Object e, StackTrace s) {
+            log('Request body stream failed', error: e, stackTrace: s);
+            // unblock send(), which would otherwise wait on a body that will
+            // never arrive
+            _abort();
+          })
+          .whenComplete(streamedRequest.sink.close),
     );
     final httpResponse = await streamedRequest.send();
 
     if (httpResponse.statusCode == 200) {
       final response = await _readResponseAsString(httpResponse);
       log(response);
-      _transferStateSubject.add(TransferState.completed);
+      _emit(session, TransferState.completed);
     } else {
-      _transferStateSubject.add(TransferState.failed);
+      _emit(session, TransferState.failed);
     }
   }
 
-  /// Reset speedometer readings and session
+  /// Aborts any in-flight transfer and returns to [TransferState.idle] so a new
+  /// transfer can be started.
   void reset() {
-    _speedometer.reset();
-    _abortTrigger?.complete();
+    // invalidate the running attempt so its result cannot land after this
+    _session++;
+    _abort();
     _abortTrigger = null;
+    _speedometer.reset();
+    _transferStateSubject.add(TransferState.idle);
   }
 }
 
