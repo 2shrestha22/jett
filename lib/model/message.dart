@@ -17,7 +17,20 @@ class Message with MessageMappable {
   /// Senders pass [kProtocolVersion] explicitly.
   final int? protocolVersion;
 
-  Message({required this.name, this.available = true, this.protocolVersion});
+  /// The sender's certificate fingerprint, which identifies the device across
+  /// restarts and address changes.
+  ///
+  /// Unauthenticated: anyone can broadcast any fingerprint, so this is only a
+  /// hint for finding and naming devices. Proof of the matching private key
+  /// comes from the TLS handshake when a transfer is actually attempted.
+  final String? fingerprint;
+
+  Message({
+    required this.name,
+    this.available = true,
+    this.protocolVersion,
+    this.fingerprint,
+  });
 
   static final fromMap = MessageMapper.fromMap;
   static final fromJson = MessageMapper.fromJson;

@@ -105,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ipAddress: ipAddress,
         name: message.name,
         protocolVersion: message.protocolVersion,
+        fingerprint: message.fingerprint,
       ),
       message.available,
     );
