@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:jett/discovery/konst.dart';
-import 'package:jett/identity/attestation.dart';
 import 'package:jett/identity/device_identity.dart';
 import 'package:jett/identity/trust_store.dart';
-import 'package:jett/identity/verification.dart';
+import 'package:jett/crypto/device_keys.dart';
+import 'package:jett/crypto/verification.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
@@ -120,15 +121,18 @@ class Server {
   int get offeredTotalSize => _session?.totalSize ?? 0;
 
   /// Words to show alongside the prompt so the two people can confirm the
-  /// sender is really talking to this device. Empty once the sender knows
-  /// this device's key.
-  List<String> get verificationPrompt {
+  /// sender is really talking to this device. Empty once the sender knows this
+  /// device's key.
+  ///
+  /// Off the main isolate: the derivation is deliberately slow, to make an
+  /// attacker's search for a colliding key expensive, and that cost would
+  /// otherwise land as a freeze right before the dialog appears.
+  Future<List<String>> verificationPrompt() async {
     final session = _session;
     if (session == null || !session.showVerification) return const [];
-    return verificationWords(
-      DeviceIdentity.fingerprint,
-      session.senderFingerprint,
-    );
+    final mine = deviceIdentity.fingerprint;
+    final theirs = session.senderFingerprint;
+    return Isolate.run(() => verificationWords(mine, theirs));
   }
 
   Future<void> start() async {
@@ -146,8 +150,8 @@ class Server {
     // fingerprint, which is what the verification words let the two people
     // confirm the first time round.
     final security = SecurityContext(withTrustedRoots: false)
-      ..useCertificateChainBytes(utf8.encode(DeviceIdentity.certificatePem))
-      ..usePrivateKeyBytes(utf8.encode(DeviceIdentity.privateKeyPem));
+      ..useCertificateChainBytes(utf8.encode(deviceIdentity.certificatePem))
+      ..usePrivateKeyBytes(utf8.encode(deviceIdentity.privateKeyPem));
 
     _server = await io.serve(
       handler,
@@ -243,10 +247,13 @@ class Server {
     // Dart never shows us a client certificate, so the sender proves which
     // device it is by signing this session and our fingerprint. Without that
     // there is no identity here to trust or to build the words from.
-    final senderFingerprint = verifiedSenderFingerprint(
+    final senderFingerprint = verifiedSignerFingerprint(
       certificatePem: frame.senderCertificate,
       signature: frame.signature,
-      sessionId: frame.sessionId,
+      statement: attestationStatement(
+        frame.sessionId,
+        deviceIdentity.fingerprint,
+      ),
     );
     if (senderFingerprint == null) {
       refuse(TransferFailure.unverifiedSender);

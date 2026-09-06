@@ -220,7 +220,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final senderName = server.senderName;
     final files = server.offeredFiles;
     final totalSize = server.offeredTotalSize;
-    final words = server.verificationPrompt;
+    // deliberately slow, and off the main isolate; the screen may be gone by
+    // the time it returns
+    final words = await server.verificationPrompt();
+    if (!mounted) return;
 
     _promptedSession = sessionId;
     var settled = false;

@@ -2,16 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:isolate';
 
-import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jett/discovery/konst.dart';
-import 'package:jett/identity/attestation.dart';
 import 'package:jett/identity/device_identity.dart';
 import 'package:jett/identity/trust_store.dart';
-import 'package:jett/identity/verification.dart';
+import 'package:jett/crypto/device_keys.dart';
+import 'package:jett/crypto/verification.dart';
 import 'package:jett/model/device.dart';
 import 'package:jett/model/resource.dart';
 import 'package:jett/model/transfer_status.dart';
@@ -114,7 +114,7 @@ class Client {
       String? presented;
       httpClient = HttpClient(context: SecurityContext(withTrustedRoots: false))
         ..badCertificateCallback = (certificate, host, port) {
-          presented = sha256.convert(certificate.der).toString();
+          presented = keyFingerprintOfDer(certificate.der);
           return true;
         };
 
@@ -176,7 +176,7 @@ class Client {
       socket.sink.add(
         RequestFrame(
           sessionId: session,
-          senderName: DeviceIdentity.alias,
+          senderName: deviceIdentity.alias,
           files: [
             for (final (resource, length) in sized)
               OfferedFile(
@@ -187,8 +187,10 @@ class Client {
           ],
           totalSize: totalSize,
           requestVerification: !trusted,
-          senderCertificate: DeviceIdentity.certificatePem,
-          signature: signRequest(session, peerFingerprint),
+          senderCertificate: deviceIdentity.certificatePem,
+          signature: deviceIdentity.keys.sign(
+            attestationStatement(session, peerFingerprint),
+          ),
         ).toJson(),
       );
 
@@ -196,8 +198,13 @@ class Client {
       // words at the same moment these are on screen. There is nothing to
       // compare against otherwise.
       if (!trusted) {
+        final mine = deviceIdentity.fingerprint;
+        // off the main isolate; the derivation is deliberately slow
+        final words = await Isolate.run(
+          () => verificationWords(mine, peerFingerprint),
+        );
         final confirmed = await onVerify(
-          verificationWords(DeviceIdentity.fingerprint, peerFingerprint),
+          words,
           // settles either way; the prompt only needs to know it is over
           answer.future.then((_) {}, onError: (_) {}),
         );

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:jett/identity/alias_words.dart';
+import 'package:jett/crypto/wordlists/alias_words.dart';
 
 /// The name a device announces itself under, derived from its certificate
 /// fingerprint.

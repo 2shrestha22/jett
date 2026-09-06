@@ -19,9 +19,10 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Future.wait([PackageInfoHelper.init(), DeviceIdentity.init()]);
-  // needs the identity directory, so it runs after the wait above
-  await trustStore.init();
+  await PackageInfoHelper.init();
+  deviceIdentity = await DeviceIdentity.load();
+  // shares the identity directory, so it opens once the identity exists
+  trustStore = await FileTrustStore.open();
 
   if (Platform.isAndroid || Platform.isIOS) {
     PlatformApi.instance.init();

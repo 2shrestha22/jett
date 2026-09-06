@@ -8,9 +8,9 @@ import 'package:jett/model/message.dart';
 class PresenceBroadcaster {
   final _multicastAddress = InternetAddress(kAddress);
   final _baseMessage = Message(
-    name: DeviceIdentity.alias,
+    name: deviceIdentity.alias,
     protocolVersion: kProtocolVersion,
-    fingerprint: DeviceIdentity.fingerprint,
+    fingerprint: deviceIdentity.fingerprint,
   );
 
   RawDatagramSocket? _socket;

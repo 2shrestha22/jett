@@ -4,6 +4,14 @@ import 'package:jett/model/transfer_status.dart';
 
 part 'protocol.mapper.dart';
 
+/// What a sender signs to prove which device it is.
+///
+/// Naming the receiver stops a signature collected by one device being replayed
+/// at another; naming the session stops it being reused against the same device
+/// twice.
+String attestationStatement(String sessionId, String receiverFingerprint) =>
+    'jett-auth-v1:$sessionId:$receiverFingerprint';
+
 /// A file the sender is offering, described before any bytes move so the
 /// receiver can show what it is agreeing to.
 @MappableClass()
