@@ -106,16 +106,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // TransferWaiting and TransferInProgress are re-emitted as a transfer
+  // advances, so each is acted on once per session.
+  String? _promptedSession;
+  String? _navigatedSession;
+
   Future<void> _initServer() async {
-    server.transferState.listen((event) {
-      switch (event) {
-        case TransferState.waiting:
+    server.transferState.listen((state) {
+      switch (state) {
+        case TransferWaiting(:final sessionId):
+          if (_promptedSession == sessionId) break;
+          _promptedSession = sessionId;
           _onRequestHandler();
-          break;
-        case TransferState.inProgress:
+        case TransferInProgress(:final sessionId):
+          if (_navigatedSession == sessionId) break;
+          _navigatedSession = sessionId;
           _onDownloadStartHandler();
-          break;
-        default:
+        case _:
           break;
       }
     });
@@ -124,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _onRequestHandler() async {
-    final accept = await showFDialog(
+    final accept = await showFDialog<bool>(
       context: context,
       builder: (context, _, _) {
         final theme = context.theme;
@@ -172,7 +179,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
 
-    if (accept) {
+    // dismissing the dialog without choosing declines the transfer
+    if (accept ?? false) {
       server.acceptRequest();
     } else {
       server.rejectRequest();
@@ -180,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _onDownloadStartHandler() async {
+    if (!mounted) return;
     presenceBroadcaster.stopPresenceAnnounce();
     await context.push('/receive');
     server.reset();

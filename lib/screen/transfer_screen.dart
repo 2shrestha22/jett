@@ -3,7 +3,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
 import 'package:jett/core/hooks.dart';
 import 'package:jett/model/transfer_status.dart';
-import 'package:jett/screen/widgets/file_info_stream_builder.dart';
 import 'package:jett/screen/widgets/speedometer_widget.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
@@ -13,6 +12,16 @@ import 'package:jett/utils/save_path.dart';
 import 'package:rxdart/rxdart.dart';
 
 enum TransferType { send, receive }
+
+String _failureMessage(TransferFailure reason) => switch (reason) {
+  TransferFailure.declined => 'The other device declined the transfer',
+  TransferFailure.busy => 'That device is busy with another transfer',
+  TransferFailure.peerUnreachable => 'Could not reach that device',
+  TransferFailure.timeout => 'The other device stopped responding',
+  TransferFailure.fileUnreadable => 'A file could not be read',
+  TransferFailure.storageError => 'The files could not be saved',
+  TransferFailure.unknown => 'Transfer failed',
+};
 
 class TransferScreen extends StatefulHookWidget {
   final TransferType transferType;
@@ -26,7 +35,6 @@ class TransferScreen extends StatefulHookWidget {
 class _TransferScreenState extends State<TransferScreen> {
   late ValueStream<TransferState> transferStateStream;
   late ValueStream<SpeedometerReading?> speedometerReadingStream;
-  late Stream<String> fileNameStream;
 
   @override
   void initState() {
@@ -35,12 +43,10 @@ class _TransferScreenState extends State<TransferScreen> {
       case TransferType.send:
         transferStateStream = client.transferState;
         speedometerReadingStream = client.speedometerReadingsStream;
-        fileNameStream = client.fileNameStream;
         break;
       case TransferType.receive:
         transferStateStream = server.transferState;
         speedometerReadingStream = server.speedometerReadingStream;
-        fileNameStream = server.fileNameStream;
         break;
     }
   }
@@ -111,14 +117,20 @@ class _TransferScreenState extends State<TransferScreen> {
                   builder: (context) {
                     final transferState = useStream(transferStateStream);
                     return switch (transferState.data) {
-                      TransferState.waiting => Text('Waiting for receiver'),
-                      TransferState.inProgress => FileInfoStreamBuilder(
-                        stream: fileNameStream,
+                      TransferWaiting() => Text('Waiting for receiver'),
+                      TransferInProgress(:final fileName) => Text(
+                        fileName ?? 'Starting...',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      TransferState.completed => Text(
+                      TransferCompleted() => Text(
                         'Transfer finished, ${formatTransferRate(speedometerReadingStream.value?.avgSpeedBps ?? 0)}',
                       ),
-                      TransferState.failed => Text('Transfer failed'),
+                      TransferFailed(:final reason) => Text(
+                        _failureMessage(reason),
+                        textAlign: TextAlign.center,
+                      ),
+                      TransferCancelled() => Text('Transfer cancelled'),
                       _ => SizedBox.shrink(),
                     };
                   },
@@ -169,10 +181,8 @@ class _TransferScreenState extends State<TransferScreen> {
               HookBuilder(
                 builder: (context) {
                   final transferState = useStream(transferStateStream);
-                  final opacity = switch (transferState.data) {
-                    TransferState.completed || TransferState.failed => 1.0,
-                    _ => 0.0,
-                  };
+                  final state = transferState.data;
+                  final opacity = (state?.isTerminal ?? false) ? 1.0 : 0.0;
                   return AnimatedOpacity(
                     duration: Durations.long4,
                     opacity: opacity,
