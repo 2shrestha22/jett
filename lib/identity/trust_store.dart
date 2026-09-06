@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:jett/model/device.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -36,21 +35,15 @@ class TrustedPeer {
   );
 }
 
-/// What the user is being asked to agree to before a transfer starts.
-enum TrustDecision {
-  /// The key is already known; go ahead without asking.
-  known,
-
-  /// Never seen this key. Compare the words once, then remember it.
-  firstContact,
-
-  /// A device by this name was trusted before, with a different key. Either
-  /// it was reinstalled, or something is pretending to be it.
-  keyChanged,
-}
-
 /// The keys this device has accepted, so a peer is verified once rather than
 /// every time.
+///
+/// A key that is not in here is unknown, whether it belongs to a device never
+/// seen before or to a familiar one that has been reinstalled. Both are
+/// treated the same way, because the key is the identity and there is nothing
+/// else stable to tell those cases apart: device names are not unique and
+/// often not even device-specific, so a warning keyed on them would fire on
+/// ordinary pairs of similar machines.
 ///
 /// Only the sending side keeps trust: it is the only side that can verify who
 /// it is talking to, since the receiver never sees a client certificate.
@@ -78,15 +71,8 @@ class TrustStore {
     }
   }
 
+  /// Whether the certificate a peer presented is one the user has accepted.
   bool isTrusted(String fingerprint) => _peers.containsKey(fingerprint);
-
-  /// What to do about [device], given the certificate it actually presented.
-  TrustDecision decide(Device device, String presentedFingerprint) {
-    if (_peers.containsKey(presentedFingerprint)) return TrustDecision.known;
-
-    final sameName = _peers.values.any((peer) => peer.name == device.name);
-    return sameName ? TrustDecision.keyChanged : TrustDecision.firstContact;
-  }
 
   Future<void> trust(String fingerprint, String name) async {
     _peers[fingerprint] = TrustedPeer(

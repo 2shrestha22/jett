@@ -9,7 +9,6 @@ import 'package:jett/adaptive_dialog.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence_broadcaster.dart';
 import 'package:jett/discovery/presence_listener.dart';
-import 'package:jett/identity/trust_store.dart';
 import 'package:jett/model/device.dart';
 import 'package:jett/model/message.dart';
 import 'package:jett/model/resource.dart';
@@ -122,28 +121,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Asks the user to compare this device's words against the ones shown on
   /// the device being sent to, before anything leaves here.
-  Future<bool> _confirmTrust(TrustDecision decision, List<String> words) async {
+  Future<bool> _confirmTrust(List<String> words) async {
     if (!mounted) return false;
-    final changed = decision == TrustDecision.keyChanged;
 
     final confirmed = await showFDialog<bool>(
       context: context,
       builder: (context, _, _) {
         final theme = context.theme;
         return AdaptiveDialog(
-          title: Text(changed ? 'This device has a new key' : 'Verify device'),
+          title: Text('Verify device'),
           body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 12,
             children: [
               Text(
-                changed
-                    ? 'You have sent to a device with this name before, but it '
-                          'is using a different key. Reinstalling Jett does '
-                          'this. So does something pretending to be it.'
-                    : 'Check these words match the ones shown on the other '
-                          'device.',
+                'Check these words match the ones shown on the other device.',
                 style: theme.typography.body.sm.copyWith(
                   color: theme.colors.mutedForeground,
                 ),
@@ -174,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             FButton(
               variant: .primary,
               onPress: () => Navigator.pop(context, true),
-              child: Text(changed ? 'Send anyway' : 'They match'),
+              child: Text('They match'),
             ),
           ],
         );

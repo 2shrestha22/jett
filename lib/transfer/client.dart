@@ -29,10 +29,7 @@ typedef _SizedResource = (Resource resource, int length);
 /// Asks the user to confirm a peer's key before anything is sent to it.
 ///
 /// Returns true to go ahead and remember the key.
-typedef TrustPrompt = Future<bool> Function(
-  TrustDecision decision,
-  List<String> words,
-);
+typedef TrustPrompt = Future<bool> Function(List<String> words);
 
 class Client {
   /// How long to wait for the control socket to come up.
@@ -124,12 +121,9 @@ class Client {
         throw const SocketException('Peer presented no certificate');
       }
 
-      final decision = trustStore.decide(device, peerFingerprint);
-      if (decision != TrustDecision.known) {
-        final confirmed = await onVerify(
-          decision,
-          verificationWords(peerFingerprint),
-        );
+      final trusted = trustStore.isTrusted(peerFingerprint);
+      if (!trusted) {
+        final confirmed = await onVerify(verificationWords(peerFingerprint));
         if (!confirmed) {
           await rawSocket.close();
           _emit(
@@ -197,7 +191,7 @@ class Client {
               ),
           ],
           totalSize: totalSize,
-          requestVerification: decision != TrustDecision.known,
+          requestVerification: !trusted,
         ).toJson(),
       );
 
