@@ -112,9 +112,7 @@ final class TransferCancelled extends TransferState {
 extension TransferStateX on TransferState {
   /// True once the transfer has stopped for any reason.
   bool get isTerminal => switch (this) {
-    TransferCompleted() ||
-    TransferFailed() ||
-    TransferCancelled() => true,
+    TransferCompleted() || TransferFailed() || TransferCancelled() => true,
     TransferIdle() || TransferWaiting() || TransferInProgress() => false,
   };
 }

@@ -132,12 +132,10 @@ class _TransferScreenState extends State<TransferScreen> {
                         _failureMessage(reason),
                         textAlign: TextAlign.center,
                       ),
-                      TransferCancelled(:final by) => Text(
-                        switch (by) {
-                          CancelledBy.sender => 'The sender cancelled',
-                          CancelledBy.receiver => 'Transfer cancelled',
-                        },
-                      ),
+                      TransferCancelled(:final by) => Text(switch (by) {
+                        CancelledBy.sender => 'The sender cancelled',
+                        CancelledBy.receiver => 'Transfer cancelled',
+                      }),
                       _ => SizedBox.shrink(),
                     };
                   },

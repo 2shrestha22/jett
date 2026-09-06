@@ -17,11 +17,7 @@ class Message with MessageMappable {
   /// Senders pass [kProtocolVersion] explicitly.
   final int? protocolVersion;
 
-  Message({
-    required this.name,
-    this.available = true,
-    this.protocolVersion,
-  });
+  Message({required this.name, this.available = true, this.protocolVersion});
 
   static final fromMap = MessageMapper.fromMap;
   static final fromJson = MessageMapper.fromJson;
