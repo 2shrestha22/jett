@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
+import 'package:jett/identity/device_identity.dart';
 import 'package:jett/platform/platform_api.dart';
 import 'package:jett/screen/about_screen.dart';
 import 'package:jett/screen/apk_picker_screen.dart';
@@ -18,7 +19,11 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Future.wait([PackageInfoHelper.init(), DeviceInfoHelper.init()]);
+  await Future.wait([
+    PackageInfoHelper.init(),
+    DeviceInfoHelper.init(),
+    DeviceIdentity.init(),
+  ]);
 
   if (Platform.isAndroid || Platform.isIOS) {
     PlatformApi.instance.init();

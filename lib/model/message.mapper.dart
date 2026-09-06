@@ -37,12 +37,19 @@ class MessageMapper extends ClassMapperBase<Message> {
     _$protocolVersion,
     opt: true,
   );
+  static String? _$fingerprint(Message v) => v.fingerprint;
+  static const Field<Message, String> _f$fingerprint = Field(
+    'fingerprint',
+    _$fingerprint,
+    opt: true,
+  );
 
   @override
   final MappableFields<Message> fields = const {
     #name: _f$name,
     #available: _f$available,
     #protocolVersion: _f$protocolVersion,
+    #fingerprint: _f$fingerprint,
   };
 
   static Message _instantiate(DecodingData data) {
@@ -50,6 +57,7 @@ class MessageMapper extends ClassMapperBase<Message> {
       name: data.dec(_f$name),
       available: data.dec(_f$available),
       protocolVersion: data.dec(_f$protocolVersion),
+      fingerprint: data.dec(_f$fingerprint),
     );
   }
 
@@ -110,7 +118,12 @@ extension MessageValueCopy<$R, $Out> on ObjectCopyWith<$R, Message, $Out> {
 
 abstract class MessageCopyWith<$R, $In extends Message, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? name, bool? available, int? protocolVersion});
+  $R call({
+    String? name,
+    bool? available,
+    int? protocolVersion,
+    String? fingerprint,
+  });
   MessageCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -123,19 +136,25 @@ class _MessageCopyWithImpl<$R, $Out>
   late final ClassMapperBase<Message> $mapper =
       MessageMapper.ensureInitialized();
   @override
-  $R call({String? name, bool? available, Object? protocolVersion = $none}) =>
-      $apply(
-        FieldCopyWithData({
-          if (name != null) #name: name,
-          if (available != null) #available: available,
-          if (protocolVersion != $none) #protocolVersion: protocolVersion,
-        }),
-      );
+  $R call({
+    String? name,
+    bool? available,
+    Object? protocolVersion = $none,
+    Object? fingerprint = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (name != null) #name: name,
+      if (available != null) #available: available,
+      if (protocolVersion != $none) #protocolVersion: protocolVersion,
+      if (fingerprint != $none) #fingerprint: fingerprint,
+    }),
+  );
   @override
   Message $make(CopyWithData data) => Message(
     name: data.get(#name, or: $value.name),
     available: data.get(#available, or: $value.available),
     protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
+    fingerprint: data.get(#fingerprint, or: $value.fingerprint),
   );
 
   @override

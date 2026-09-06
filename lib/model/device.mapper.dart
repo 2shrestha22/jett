@@ -35,12 +35,19 @@ class DeviceMapper extends ClassMapperBase<Device> {
     _$protocolVersion,
     opt: true,
   );
+  static String? _$fingerprint(Device v) => v.fingerprint;
+  static const Field<Device, String> _f$fingerprint = Field(
+    'fingerprint',
+    _$fingerprint,
+    opt: true,
+  );
 
   @override
   final MappableFields<Device> fields = const {
     #ipAddress: _f$ipAddress,
     #name: _f$name,
     #protocolVersion: _f$protocolVersion,
+    #fingerprint: _f$fingerprint,
   };
 
   static Device _instantiate(DecodingData data) {
@@ -48,6 +55,7 @@ class DeviceMapper extends ClassMapperBase<Device> {
       ipAddress: data.dec(_f$ipAddress),
       name: data.dec(_f$name),
       protocolVersion: data.dec(_f$protocolVersion),
+      fingerprint: data.dec(_f$fingerprint),
     );
   }
 
@@ -97,7 +105,12 @@ extension DeviceValueCopy<$R, $Out> on ObjectCopyWith<$R, Device, $Out> {
 
 abstract class DeviceCopyWith<$R, $In extends Device, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  $R call({String? ipAddress, String? name, int? protocolVersion});
+  $R call({
+    String? ipAddress,
+    String? name,
+    int? protocolVersion,
+    String? fingerprint,
+  });
   DeviceCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -108,19 +121,25 @@ class _DeviceCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Device, $Out>
   @override
   late final ClassMapperBase<Device> $mapper = DeviceMapper.ensureInitialized();
   @override
-  $R call({String? ipAddress, String? name, Object? protocolVersion = $none}) =>
-      $apply(
-        FieldCopyWithData({
-          if (ipAddress != null) #ipAddress: ipAddress,
-          if (name != null) #name: name,
-          if (protocolVersion != $none) #protocolVersion: protocolVersion,
-        }),
-      );
+  $R call({
+    String? ipAddress,
+    String? name,
+    Object? protocolVersion = $none,
+    Object? fingerprint = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (ipAddress != null) #ipAddress: ipAddress,
+      if (name != null) #name: name,
+      if (protocolVersion != $none) #protocolVersion: protocolVersion,
+      if (fingerprint != $none) #fingerprint: fingerprint,
+    }),
+  );
   @override
   Device $make(CopyWithData data) => Device(
     ipAddress: data.get(#ipAddress, or: $value.ipAddress),
     name: data.get(#name, or: $value.name),
     protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
+    fingerprint: data.get(#fingerprint, or: $value.fingerprint),
   );
 
   @override

@@ -58,6 +58,8 @@ dependencies:
   material_ui: ^1.1.1
   shelf_web_socket: ^3.0.0
   web_socket_channel: ^3.0.3
+  basic_utils: ^5.8.2
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

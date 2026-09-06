@@ -21,8 +21,9 @@ class PresenceNotifier extends ChangeNotifier {
     });
   }
 
-  /// Keyed by IP address so a peer that restarts replaces its previous entry
-  /// instead of appearing twice. Insertion order gives the list a stable order.
+  /// Keyed by [Device.id] so a peer that restarts, or moves to a new address,
+  /// replaces its previous entry instead of appearing twice. Insertion order
+  /// gives the list a stable order.
   final _devices = <String, _Entry>{};
 
   late final Timer _timer;
@@ -31,12 +32,12 @@ class PresenceNotifier extends ChangeNotifier {
 
   void update(Device device, bool available) {
     if (!available) {
-      if (_devices.remove(device.ipAddress) != null) notifyListeners();
+      if (_devices.remove(device.id) != null) notifyListeners();
       return;
     }
 
-    final previous = _devices[device.ipAddress];
-    _devices[device.ipAddress] = _Entry(device, DateTime.now());
+    final previous = _devices[device.id];
+    _devices[device.id] = _Entry(device, DateTime.now());
     if (previous == null || previous.device != device) notifyListeners();
   }
 
