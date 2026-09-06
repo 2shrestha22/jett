@@ -32,9 +32,19 @@ class OnlineDevices extends StatelessWidget {
                 .map(
                   (device) => FButton(
                     mainAxisSize: MainAxisSize.min,
-                    prefix: Icon(FLucideIcons.send),
-                    onPress: () => onTap(device),
-                    child: Text(device.name),
+                    prefix: Icon(
+                      device.isSupported
+                          ? FLucideIcons.send
+                          : FLucideIcons.circleAlert,
+                    ),
+                    // a device on an older build cannot be sent to at all,
+                    // so say why rather than letting the send fail
+                    onPress: device.isSupported ? () => onTap(device) : null,
+                    child: Text(
+                      device.isSupported
+                          ? device.name
+                          : '${device.name} — needs updating',
+                    ),
                   ),
                 )
                 .toList(),

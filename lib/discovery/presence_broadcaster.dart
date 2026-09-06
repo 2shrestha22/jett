@@ -7,7 +7,10 @@ import 'package:jett/utils/device_info.dart';
 
 class PresenceBroadcaster {
   final _multicastAddress = InternetAddress(kAddress);
-  final _baseMessage = Message(name: DeviceInfoHelper.deviceName);
+  final _baseMessage = Message(
+    name: DeviceInfoHelper.deviceName,
+    protocolVersion: kProtocolVersion,
+  );
 
   RawDatagramSocket? _socket;
   Timer? _timer;

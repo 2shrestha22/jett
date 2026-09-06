@@ -1,4 +1,13 @@
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'transfer_status.mapper.dart';
+
 /// Why a transfer ended without delivering its files.
+///
+/// Also travels on the control channel, so values are serialised by name and
+/// must not be renamed without bumping [kProtocolVersion]. Sender-local
+/// reasons simply never appear on the wire.
+@MappableEnum()
 enum TransferFailure {
   /// The person on the receiving device declined the request.
   declined,
@@ -17,6 +26,9 @@ enum TransferFailure {
 
   /// Received data could not be written to disk.
   storageError,
+
+  /// The peer speaks a different version of the control protocol.
+  versionMismatch,
 
   unknown,
 }
