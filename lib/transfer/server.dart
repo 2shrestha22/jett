@@ -182,7 +182,11 @@ class Server {
     );
   }
 
-  void _onRequestFrame(RequestFrame frame, WebSocketChannel socket, String peer) {
+  void _onRequestFrame(
+    RequestFrame frame,
+    WebSocketChannel socket,
+    String peer,
+  ) {
     void refuse(TransferFailure reason) {
       try {
         socket.sink.add(

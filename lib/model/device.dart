@@ -1,5 +1,6 @@
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:jett/discovery/konst.dart';
+
 part 'device.mapper.dart';
 
 @MappableClass()

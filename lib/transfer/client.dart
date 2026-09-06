@@ -177,11 +177,7 @@ class Client {
     }
   }
 
-  void _onFrame(
-    String session,
-    Object? raw,
-    Completer<ControlMessage> answer,
-  ) {
+  void _onFrame(String session, Object? raw, Completer<ControlMessage> answer) {
     final ControlMessage frame;
     try {
       frame = ControlMessage.fromJson(raw! as String);
@@ -224,9 +220,7 @@ class Client {
     _speedometer.reset();
     _speedometer.fileSize = totalFileSize;
 
-    final uri = Uri.parse(
-      'http://$ipAddr:$kTcpPort/upload?session=$session',
-    );
+    final uri = Uri.parse('http://$ipAddr:$kTcpPort/upload?session=$session');
 
     final streamedRequest = http.AbortableStreamedRequest(
       'POST',
