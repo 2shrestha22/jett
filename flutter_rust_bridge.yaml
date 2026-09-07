@@ -1,0 +1,9 @@
+# Bindings for the Rust data plane. Regenerate with:
+#
+#   flutter_rust_bridge_codegen generate
+#
+# Only `crate::api` is exposed; the rest of the crate is internal and changing
+# it does not churn the generated Dart.
+rust_input: crate::api
+rust_root: rust/
+dart_output: lib/rust/

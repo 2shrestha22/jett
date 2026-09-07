@@ -59,6 +59,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   basic_utils: ^5.8.2
   crypto: ^3.0.7
+  flutter_rust_bridge: 2.13.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

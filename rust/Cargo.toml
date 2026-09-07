@@ -1,0 +1,33 @@
+[package]
+name = "jett_core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "jett_core"
+# staticlib -> iOS/macOS xcframework, cdylib -> Android/Linux/Windows, rlib -> tests
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "io-util", "macros", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["io"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "matched-path"] }
+axum-server = { version = "0.7", features = ["tls-rustls-no-provider"] }
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls-manual-roots-no-provider", "http2"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls-pemfile = "2"
+rustls-pki-types = "1"
+x509-parser = "0.16"
+sha2 = "0.10"
+futures-util = "0.3"
+bytes = "1"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+flutter_rust_bridge = { version = "=2.13.0", features = ["rust-async"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"] }
+tempfile = "3"
