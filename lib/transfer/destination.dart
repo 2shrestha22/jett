@@ -3,35 +3,28 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
-/// Where an arriving file lands, and under what name. Given a directory and a
-/// name a peer asked for, answers with a file that is safe to open.
-class Destinations {
-  /// The directory arriving files are written to. Absolute.
-  final String directory;
+/// A file in [directory] that nothing else holds, based on the name a peer
+/// asked for.
+///
+/// [claimed] are paths already handed out in this transfer but not yet created;
+/// neither exists on disk yet, so two files offered under one name would
+/// otherwise both resolve to it.
+Future<File> unusedPathIn(
+  String directory,
+  String requested, {
+  Set<String> claimed = const {},
+}) async {
+  final fileName = safeFileName(requested);
+  final extension = path.extension(fileName);
+  final stem = path.basenameWithoutExtension(fileName);
 
-  const Destinations(this.directory);
-
-  /// A file in [directory] that nothing else holds, based on [requested].
-  ///
-  /// [claimed] are paths already handed out in this transfer but not yet
-  /// created; neither exists on disk yet, so two files offered under one name
-  /// would otherwise both resolve to it.
-  Future<File> unused(
-    String requested, {
-    Set<String> claimed = const {},
-  }) async {
-    final fileName = safeFileName(requested);
-    final extension = path.extension(fileName);
-    final stem = path.basenameWithoutExtension(fileName);
-
-    var candidate = File(path.join(directory, fileName));
-    var suffix = 0;
-    while (await candidate.exists() || claimed.contains(candidate.path)) {
-      suffix++;
-      candidate = File(path.join(directory, '$stem ($suffix)$extension'));
-    }
-    return candidate;
+  var candidate = File(path.join(directory, fileName));
+  var suffix = 0;
+  while (await candidate.exists() || claimed.contains(candidate.path)) {
+    suffix++;
+    candidate = File(path.join(directory, '$stem ($suffix)$extension'));
   }
+  return candidate;
 }
 
 /// The sender-supplied name, reduced to something that can only land inside

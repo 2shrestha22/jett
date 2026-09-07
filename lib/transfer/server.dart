@@ -131,7 +131,7 @@ class Server {
   int? _dataPort;
   StreamSubscription<DataPlaneEvent>? _dataPlaneEvents;
 
-  late Destinations _destinations;
+  late String _downloadPath;
 
   final _speedometer = Speedometer();
   ValueStream<SpeedometerReading?> get speedometerReadingStream =>
@@ -167,7 +167,7 @@ class Server {
   }
 
   Future<void> start() async {
-    _destinations = Destinations(await getSavePath());
+    _downloadPath = await getSavePath();
 
     _router
       ..get('/ws', _handleControlSocket)
@@ -365,7 +365,8 @@ class Server {
       final destinations = <({String destination, int size})>[];
       for (var index = 0; index < session.files.length; index++) {
         final offered = session.files[index];
-        final target = await _destinations.unused(
+        final target = await unusedPathIn(
+          _downloadPath,
           offered.name,
           claimed: session.destinations.values.map((f) => f.path).toSet(),
         );
@@ -452,7 +453,7 @@ class Server {
     final failure = await _receiveGuarded(session, () async {
       var destination = session.destinations[index];
       if (destination == null) {
-        destination = await _destinations.unused(fileName);
+        destination = await unusedPathIn(_downloadPath, fileName);
         session.destinations[index] = destination;
       }
       await _receiveBlob(request, session, destination, offered, fileName);

@@ -89,17 +89,15 @@ void main() {
 
   group('choosing where a file lands', () {
     late Directory workspace;
-    late Destinations destinations;
 
     setUp(() {
       workspace = Directory.systemTemp.createTempSync('jett-destinations');
-      destinations = Destinations(workspace.path);
     });
 
     tearDown(() => workspace.deleteSync(recursive: true));
 
     test('sanitises the name on the way through', () async {
-      final landed = await destinations.unused('../../etc/passwd');
+      final landed = await unusedPathIn(workspace.path, '../../etc/passwd');
       expect(landed.parent.path, workspace.path);
       expect(landed.path, endsWith('passwd'));
     });
@@ -107,7 +105,7 @@ void main() {
     test('steps around a file that is already there', () async {
       File('${workspace.path}/holiday.mp4').writeAsStringSync('first');
 
-      final landed = await destinations.unused('holiday.mp4');
+      final landed = await unusedPathIn(workspace.path, 'holiday.mp4');
       expect(landed.path, endsWith('holiday (1).mp4'));
     });
 
@@ -115,8 +113,12 @@ void main() {
       // Two files offered under one name. Neither exists on disk yet, so
       // without `claimed` both would resolve to the same path and the second
       // would overwrite the first.
-      final first = await destinations.unused('a.bin');
-      final second = await destinations.unused('a.bin', claimed: {first.path});
+      final first = await unusedPathIn(workspace.path, 'a.bin');
+      final second = await unusedPathIn(
+        workspace.path,
+        'a.bin',
+        claimed: {first.path},
+      );
 
       expect(second.path, isNot(first.path));
       expect(second.path, endsWith('a (1).bin'));

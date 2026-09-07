@@ -114,12 +114,13 @@ class PickerButtonBar extends StatelessWidget {
                   ),
                 ]
                 .map(
-                  // Icon-only, so the label is the only thing a screen reader
-                  // has to go on. Three unnamed buttons in a row is the state
-                  // this was in, and it is not navigable.
-                  (e) => Semantics(
-                    label: e.label,
-                    button: true,
+                  // Icon-only, so the label is all a screen reader has to go
+                  // on -- three unnamed buttons in a row is the state this was
+                  // in, and it is not navigable. Tooltip rather than bare
+                  // Semantics because this app also runs on desktop, where the
+                  // same label is worth having on hover.
+                  (e) => Tooltip(
+                    message: e.label,
                     child: FButton.icon(
                       variant: .secondary,
                       onPress: e.onPress,
