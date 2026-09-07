@@ -1,5 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jett/transfer/server.dart';
+import 'package:jett/transfer/destination.dart';
 
 void main() {
   group('a filename chosen by the sender', () {
@@ -58,6 +60,42 @@ void main() {
         expect(safe, isNot(contains(r'\')), reason: 'from $name');
         expect(safe, isNot(startsWith('.')), reason: 'from $name');
       }
+    });
+  });
+
+  group('choosing where a file lands', () {
+    late Directory workspace;
+    late Destinations destinations;
+
+    setUp(() {
+      workspace = Directory.systemTemp.createTempSync('jett-destinations');
+      destinations = Destinations(workspace.path);
+    });
+
+    tearDown(() => workspace.deleteSync(recursive: true));
+
+    test('sanitises the name on the way through', () async {
+      final landed = await destinations.unused('../../etc/passwd');
+      expect(landed.parent.path, workspace.path);
+      expect(landed.path, endsWith('passwd'));
+    });
+
+    test('steps around a file that is already there', () async {
+      File('${workspace.path}/holiday.mp4').writeAsStringSync('first');
+
+      final landed = await destinations.unused('holiday.mp4');
+      expect(landed.path, endsWith('holiday (1).mp4'));
+    });
+
+    test('steps around a name claimed but not yet written', () async {
+      // Two files offered under one name. Neither exists on disk yet, so
+      // without `claimed` both would resolve to the same path and the second
+      // would overwrite the first.
+      final first = await destinations.unused('a.bin');
+      final second = await destinations.unused('a.bin', claimed: {first.path});
+
+      expect(second.path, isNot(first.path));
+      expect(second.path, endsWith('a (1).bin'));
     });
   });
 }

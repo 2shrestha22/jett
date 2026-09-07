@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jett/adaptive_dialog.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/discovery/presence_broadcaster.dart';
 import 'package:jett/discovery/presence_listener.dart';
@@ -18,7 +17,8 @@ import 'package:jett/screen/send/presence_notifier.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/utils/io.dart';
-import 'package:jett/utils/data.dart';
+import 'package:jett/widgets/dialogs/incoming_request_dialog.dart';
+import 'package:jett/widgets/dialogs/verify_device_dialog.dart';
 import 'package:jett/widgets/drop_region.dart';
 import 'package:jett/widgets/file_view.dart';
 import 'package:jett/widgets/picker_buttons.dart';
@@ -139,65 +139,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }),
     );
 
-    final confirmed = await showFDialog<bool>(
-      context: context,
-      builder: (context, _, _) {
-        final theme = context.theme;
-        return AdaptiveDialog(
-          title: Text('Verify device'),
-          body: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 12,
-            children: [
-              // Names the device so the person knows which screen to compare
-              // against.
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(text: 'Does '),
-                    TextSpan(
-                      text: peerName,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(text: ' show these same words?'),
-                  ],
-                  style: theme.typography.body.sm.copyWith(
-                    color: theme.colors.mutedForeground,
-                  ),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.colors.border),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  words.join('   '),
-                  textAlign: TextAlign.center,
-                  style: theme.typography.body.md.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            FButton(
-              variant: .secondary,
-              onPress: () => Navigator.pop(context, false),
-              child: Text('Doesn\'t match'),
-            ),
-            FButton(
-              variant: .primary,
-              onPress: () => Navigator.pop(context, true),
-              child: Text('Yes, send'),
-            ),
-          ],
-        );
-      },
+    final confirmed = await showVerifyDeviceDialog(
+      context,
+      peerName: peerName,
+      words: words,
     );
 
     settled = true;
@@ -249,85 +194,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       navigator.pop();
     };
 
-    final accept = await showFDialog<bool>(
-      context: context,
-      builder: (context, _, _) {
-        final theme = context.theme;
-        final summary = files.length == 1
-            ? files.single.name
-            : '${files.length} files';
-        return AdaptiveDialog(
-          title: Text('Incoming File Transfer'),
-          body: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 12,
-            children: [
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: senderName.isEmpty ? server.senderIp : senderName,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text:
-                          ' wants to send you $summary '
-                          '(${formatFileSize(totalSize)}).',
-                    ),
-                  ],
-                  style: theme.typography.body.sm.copyWith(
-                    color: theme.colors.mutedForeground,
-                  ),
-                ),
-              ),
-              // Reference material, not a second question; whether the words
-              // match is decided on the sending device. Accepting here is
-              // about the files.
-              if (words.isNotEmpty) ...[
-                Text(
-                  'This device is showing these words to '
-                  '${senderName.isEmpty ? 'the sender' : senderName}.',
-                  style: theme.typography.body.sm.copyWith(
-                    color: theme.colors.mutedForeground,
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: theme.colors.border),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    words.join('   '),
-                    textAlign: TextAlign.center,
-                    style: theme.typography.body.md.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            FButton(
-              variant: .secondary,
-              onPress: () {
-                Navigator.pop(context, false);
-              },
-              child: Text('Decline'),
-            ),
-            FButton(
-              variant: .primary,
-              onPress: () {
-                Navigator.pop(context, true);
-              },
-              child: Text('Accept'),
-            ),
-          ],
-        );
-      },
+    final accept = await showIncomingRequestDialog(
+      context,
+      senderLabel: senderName.isEmpty ? server.senderIp : senderName,
+      files: files,
+      totalSize: totalSize,
+      words: words,
     );
 
     _closePrompt = null;

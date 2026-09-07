@@ -11,11 +11,11 @@ import 'package:jett/crypto/device_keys.dart';
 import 'package:jett/crypto/verification.dart';
 import 'package:jett/model/transfer_status.dart';
 import 'package:jett/transfer/data_plane.dart';
+import 'package:jett/transfer/destination.dart';
 import 'package:jett/transfer/diagnostics.dart';
 import 'package:jett/transfer/protocol.dart';
 import 'package:jett/transfer/speedometer.dart';
 import 'package:jett/utils/save_path.dart';
-import 'package:path/path.dart' as path;
 import 'package:rxdart/rxdart.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -131,7 +131,7 @@ class Server {
   int? _dataPort;
   StreamSubscription<DataPlaneEvent>? _dataPlaneEvents;
 
-  late String _downloadPath;
+  late Destinations _destinations;
 
   final _speedometer = Speedometer();
   ValueStream<SpeedometerReading?> get speedometerReadingStream =>
@@ -167,7 +167,7 @@ class Server {
   }
 
   Future<void> start() async {
-    _downloadPath = await getSavePath();
+    _destinations = Destinations(await getSavePath());
 
     _router
       ..get('/ws', _handleControlSocket)
@@ -365,10 +365,8 @@ class Server {
       final destinations = <({String destination, int size})>[];
       for (var index = 0; index < session.files.length; index++) {
         final offered = session.files[index];
-        final target = await _unusedPathFor(
-          safeFileName(offered.name),
-          // Claimed as chosen: neither file exists on disk yet, so two offered
-          // under one name would both resolve to it.
+        final target = await _destinations.unused(
+          offered.name,
           claimed: session.destinations.values.map((f) => f.path).toSet(),
         );
         session.destinations[index] = target;
@@ -454,7 +452,7 @@ class Server {
     final failure = await _receiveGuarded(session, () async {
       var destination = session.destinations[index];
       if (destination == null) {
-        destination = await _unusedPathFor(fileName);
+        destination = await _destinations.unused(fileName);
         session.destinations[index] = destination;
       }
       await _receiveBlob(request, session, destination, offered, fileName);
@@ -681,33 +679,7 @@ class Server {
       } catch (_) {
         // Closing re-throws whatever broke the write, which must not be masked.
       }
-      if (!complete) await _deleteQuietly(destination);
-    }
-  }
-
-  /// Where to put an incoming [fileName] without overwriting. A second
-  /// "photo.jpg" lands as "photo (1).jpg".
-  Future<File> _unusedPathFor(
-    String fileName, {
-    Set<String> claimed = const {},
-  }) async {
-    final extension = path.extension(fileName);
-    final stem = path.basenameWithoutExtension(fileName);
-
-    var candidate = File(path.join(_downloadPath, fileName));
-    var suffix = 0;
-    while (await candidate.exists() || claimed.contains(candidate.path)) {
-      suffix++;
-      candidate = File(path.join(_downloadPath, '$stem ($suffix)$extension'));
-    }
-    return candidate;
-  }
-
-  Future<void> _deleteQuietly(File file) async {
-    try {
-      if (await file.exists()) await file.delete();
-    } on FileSystemException catch (e) {
-      log('Left behind a partial file at ${file.path}', error: e);
+      if (!complete) await deleteQuietly(destination);
     }
   }
 
@@ -752,21 +724,6 @@ class Server {
     _server?.close();
     _server = null;
   }
-}
-
-/// The sender-supplied name, reduced to something that can only land inside
-/// the download directory.
-///
-/// `path.join` returns an absolute path unchanged and honours `..`, so without
-/// this a peer could write anywhere this process can reach. Both separators
-/// are stripped whatever the host platform, since the name crosses machines.
-String safeFileName(String? requested) {
-  final flattened = (requested ?? '').replaceAll(r'\', '/');
-  final base = flattened.split('/').last.trim();
-
-  if (base.isEmpty || base == '.' || base == '..') return 'file';
-  // a leading dot would hide the file, which a sender should not get to decide
-  return base.startsWith('.') ? base.substring(1) : base;
 }
 
 String _getClientAddress(Request request) {
