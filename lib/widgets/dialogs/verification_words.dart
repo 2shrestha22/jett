@@ -19,12 +19,25 @@ class VerificationWords extends StatelessWidget {
         border: Border.all(color: theme.colors.border),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        words.join('   '),
-        textAlign: TextAlign.center,
-        style: theme.typography.body.md.copyWith(
-          fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
+      // Read aloud, not just looked at: one person says these while the other
+      // checks them. Joined by spaces they are one run-on token to a screen
+      // reader, so the spoken form separates them explicitly.
+      child: Semantics(
+        label: 'Verification words: ${words.join(', ')}',
+        readOnly: true,
+        child: ExcludeSemantics(
+          child: Text(
+            words.join('   '),
+            textAlign: TextAlign.center,
+            // The comparison is letter by letter across two screens, and these
+            // are deliberately similar-looking words.
+            style: theme.typography.body.md.copyWith(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+              letterSpacing: 0.5,
+              height: 1.4,
+            ),
+          ),
         ),
       ),
     );

@@ -13,18 +13,36 @@ import 'package:rxdart/rxdart.dart';
 
 enum TransferType { send, receive }
 
+/// What went wrong, and what the person can do about it.
+///
+/// Every one of these is read by somebody whose transfer just stopped, so the
+/// second half matters as much as the first: a message that only names the
+/// failure leaves them with nothing to try. Where there is genuinely nothing to
+/// try, the message says so rather than inventing advice.
 String _failureMessage(TransferFailure reason) => switch (reason) {
-  TransferFailure.declined => 'The other device declined the transfer',
-  TransferFailure.busy => 'That device is busy with another transfer',
-  TransferFailure.peerUnreachable => 'Could not reach that device',
-  TransferFailure.timeout => 'The other device stopped responding',
-  TransferFailure.fileUnreadable => 'A file could not be read',
-  TransferFailure.storageError => 'The files could not be saved',
+  TransferFailure.declined => 'The other device declined the transfer.',
+  TransferFailure.busy =>
+    'That device is busy with another transfer. Try again once it has '
+        'finished.',
+  TransferFailure.peerUnreachable =>
+    'Could not reach that device. Check both devices are on the same '
+        'network.',
+  TransferFailure.timeout =>
+    'The other device stopped responding. Check it is still awake and on '
+        'the same network.',
+  TransferFailure.fileUnreadable =>
+    'A file could not be read. It may have been moved or deleted since it '
+        'was picked.',
+  TransferFailure.storageError =>
+    'The files could not be saved. Check there is enough free space.',
   TransferFailure.unverifiedSender =>
-    'That device could not prove which device it is',
+    'That device could not prove which device it is, so the transfer was '
+        'stopped. Try again, and if it keeps happening you may not be talking '
+        'to the device you think you are.',
   TransferFailure.versionMismatch =>
-    'That device is running a different version of Jett',
-  TransferFailure.unknown => 'Transfer failed',
+    'That device is running a version of Jett this one cannot talk to. '
+        'Update Jett on both devices.',
+  TransferFailure.unknown => 'The transfer failed. Try again.',
 };
 
 class TransferScreen extends StatefulHookWidget {

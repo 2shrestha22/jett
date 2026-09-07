@@ -247,7 +247,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             onPressed: () {
               context.push('/about');
             },
-            icon: Icon(FLucideIcons.info),
+            tooltip: 'About Jett',
+            icon: const Icon(FLucideIcons.info),
           ),
         ],
       ),

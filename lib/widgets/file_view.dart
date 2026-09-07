@@ -83,7 +83,11 @@ class _FileInfoTileState extends State<FileInfoTile> {
       ),
       suffix: IconButton(
         onPressed: widget.onRemoveTap,
-        icon: Icon(FLucideIcons.x),
+        // Named after the file, because a list of identical "Remove" buttons
+        // tells a screen reader user which control they are on but not which
+        // file it would drop.
+        tooltip: 'Remove ${widget.resource.name}',
+        icon: const Icon(FLucideIcons.x),
       ),
     );
   }

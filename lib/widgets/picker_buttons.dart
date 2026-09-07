@@ -96,19 +96,35 @@ class PickerButtonBar extends StatelessWidget {
         spacing: 8,
         children:
             [
-                  (() => _handleFilePick(onResourceAdd), FLucideIcons.files),
+                  (
+                    label: 'Add files',
+                    onPress: () => _handleFilePick(onResourceAdd),
+                    icon: FLucideIcons.files,
+                  ),
                   if (Platform.isAndroid)
                     (
-                      () => _handleApkPick(context, onResourceAdd),
-                      Icons.android,
+                      label: 'Add an installed app',
+                      onPress: () => _handleApkPick(context, onResourceAdd),
+                      icon: Icons.android,
                     ),
-                  (() => onClear(), FLucideIcons.listX),
+                  (
+                    label: 'Remove all files',
+                    onPress: () => onClear(),
+                    icon: FLucideIcons.listX,
+                  ),
                 ]
                 .map(
-                  (e) => FButton.icon(
-                    variant: .secondary,
-                    onPress: e.$1,
-                    child: Icon(e.$2, size: 24),
+                  // Icon-only, so the label is the only thing a screen reader
+                  // has to go on. Three unnamed buttons in a row is the state
+                  // this was in, and it is not navigable.
+                  (e) => Semantics(
+                    label: e.label,
+                    button: true,
+                    child: FButton.icon(
+                      variant: .secondary,
+                      onPress: e.onPress,
+                      child: Icon(e.icon, size: 24),
+                    ),
                   ),
                 )
                 .toList(),
