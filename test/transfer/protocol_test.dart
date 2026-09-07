@@ -48,6 +48,32 @@ void main() {
       expect(back.protocolVersion, kProtocolVersion);
     });
 
+    test('a request carries the bulk-data path the sender can use', () {
+      final back =
+          ControlMessage.fromJson(
+                RequestFrame(
+                  sessionId: 's1',
+                  senderName: 'Noble Meadow',
+                  files: const [],
+                  totalSize: 0,
+                  senderCertificate: 'cert',
+                  signature: 'sig',
+                  dataPlaneVersion: kDataPlaneVersion,
+                ).toJson(),
+              )
+              as RequestFrame;
+      expect(back.dataPlaneVersion, kDataPlaneVersion);
+    });
+
+    test('an acceptance carries the path the receiver settled on', () {
+      final back =
+          ControlMessage.fromJson(
+                AcceptedFrame(sessionId: 's1', dataPlaneVersion: 2).toJson(),
+              )
+              as AcceptedFrame;
+      expect(back.dataPlaneVersion, 2);
+    });
+
     test(
       'a failure reason survives, so the sender can say what went wrong',
       () {
@@ -67,6 +93,41 @@ void main() {
         throwsA(anything),
       );
       expect(() => ControlMessage.fromJson('not json'), throwsA(anything));
+    });
+  });
+
+  group('talking to a build that predates the raw-body path', () {
+    // These two defaults are the whole backward-compatibility story. If either
+    // ever decodes as 2, a new build will offer an old one an endpoint it does
+    // not serve, and every transfer between them fails.
+    test('a request without the field means multipart', () {
+      final legacy =
+          ControlMessage.fromJson(
+                '{"type":"request","sessionId":"s1","protocolVersion":'
+                '$kProtocolVersion,"senderName":"Old Phone","files":[],'
+                '"totalSize":0,"requestVerification":false,'
+                '"senderCertificate":"cert","signature":"sig"}',
+              )
+              as RequestFrame;
+      expect(legacy.dataPlaneVersion, 1);
+    });
+
+    test('an acceptance without the field means multipart', () {
+      final legacy =
+          ControlMessage.fromJson('{"type":"accepted","sessionId":"s1"}')
+              as AcceptedFrame;
+      expect(legacy.dataPlaneVersion, 1);
+    });
+
+    test('negotiation takes the lower of the two', () {
+      expect(negotiatedDataPlaneVersion(1), 1);
+      expect(negotiatedDataPlaneVersion(kDataPlaneVersion), kDataPlaneVersion);
+      // A newer peer offering more than this build knows is held to what this
+      // build can actually serve.
+      expect(
+        negotiatedDataPlaneVersion(kDataPlaneVersion + 5),
+        kDataPlaneVersion,
+      );
     });
   });
 

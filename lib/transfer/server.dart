@@ -22,7 +22,13 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-const disableFileWrite = kDebugMode;
+/// Whether received bytes are dropped instead of written to disk.
+///
+/// On in debug builds, where transfers are usually being exercised for their
+/// own sake and filling the download directory is a nuisance. Mutable so that
+/// tests which care what lands on disk can turn it off — with it left on, the
+/// receiving path cannot be checked at all.
+bool disableFileWrite = kDebugMode;
 
 final server = Server();
 
@@ -38,6 +44,18 @@ class _Session {
 
   /// The sender's fingerprint, proven by the signature on its request.
   final String senderFingerprint;
+
+  /// The bulk-data path settled on for this transfer: the lower of what the
+  /// two builds support. See [kDataPlaneVersion].
+  final int dataPlaneVersion;
+
+  /// Where each offered file is being written, resolved on the first request
+  /// for that index so a retried one does not allocate a second name.
+  final Map<int, File> destinations = {};
+
+  /// How many of the offered files have arrived in full. The transfer is over
+  /// when this reaches the number offered.
+  int filesReceived = 0;
 
   /// Whether the two people still have to compare words for this pair.
   final bool showVerification;
@@ -64,6 +82,7 @@ class _Session {
     required this.totalSize,
     required this.senderFingerprint,
     required this.showVerification,
+    required this.dataPlaneVersion,
   });
 
   void send(ControlMessage frame) {
@@ -140,7 +159,8 @@ class Server {
 
     _router
       ..get('/ws', _handleControlSocket)
-      ..post('/upload', _handleUpload);
+      ..post('/upload', _handleUpload)
+      ..put('/v2/blob/<session>/<index>', _handleBlob);
 
     final handler = const Pipeline()
         .addMiddleware(logRequests())
@@ -272,6 +292,7 @@ class Server {
 
     final session = _Session(
       id: frame.sessionId,
+      dataPlaneVersion: negotiatedDataPlaneVersion(frame.dataPlaneVersion),
       peerAddress: peer,
       socket: socket,
       senderName: frame.senderName,
@@ -297,7 +318,12 @@ class Server {
     // accepting is also the moment this device vouches for the sender's key,
     // so a later transfer from it does not ask again
     unawaited(trustStore.trust(session.senderFingerprint, session.senderName));
-    session.send(AcceptedFrame(sessionId: session.id));
+    session.send(
+      AcceptedFrame(
+        sessionId: session.id,
+        dataPlaneVersion: session.dataPlaneVersion,
+      ),
+    );
 
     Timer(_uploadStartTimeout, () {
       if (!identical(_session, session) || session.uploading) return;
@@ -346,8 +372,100 @@ class Server {
       TransferInProgress(sessionId: session.id, peerAddress: peer),
     );
 
+    final failure = await _receiveGuarded(
+      session,
+      () => _receiveFiles(request, session),
+    );
+    _speedometer.stop();
+    if (failure != null) return failure;
+
+    return _finishTransfer(session);
+  }
+
+  /// One file of a v2 transfer. The body is the file.
+  ///
+  /// Nothing parses the body: it is written as it arrives. Which file this is
+  /// comes from the index in the path rather than from a filename inside the
+  /// body, so the name written to disk is the one from the offer the user
+  /// approved — not one the sender chose separately afterwards.
+  Future<Response> _handleBlob(
+    Request request,
+    String sessionId,
+    String rawIndex,
+  ) async {
+    final session = _session;
+    final peer = _getClientAddress(request);
+
+    if (session == null ||
+        session.id != sessionId ||
+        !session.accepted ||
+        session.peerAddress != peer) {
+      return Response.forbidden('No accepted transfer for this peer');
+    }
+    if (session.dataPlaneVersion < 2) {
+      return Response(400, body: 'This transfer negotiated multipart');
+    }
+
+    final index = int.tryParse(rawIndex);
+    if (index == null || index < 0 || index >= session.files.length) {
+      return Response.notFound('No such file in this transfer');
+    }
+
+    final offered = session.files[index];
+    final fileName = safeFileName(offered.name);
+
+    // Only the first file of the transfer starts the clock; the rest arrive on
+    // their own requests and must keep counting against the same total.
+    if (!session.uploading) {
+      session.uploading = true;
+      _speedometer.reset();
+      _speedometer.fileSize = session.totalSize;
+    }
+    _emit(
+      session,
+      TransferInProgress(
+        sessionId: session.id,
+        peerAddress: peer,
+        fileName: fileName,
+      ),
+    );
+
+    final failure = await _receiveGuarded(session, () async {
+      var destination = session.destinations[index];
+      if (destination == null) {
+        destination = await _unusedPathFor(fileName);
+        session.destinations[index] = destination;
+      }
+      await _receiveBlob(request, session, destination, offered, fileName);
+    });
+    if (failure != null) {
+      _speedometer.stop();
+      return failure;
+    }
+
+    if (!session.cancelled) {
+      session.filesReceived++;
+      // More still to come; the transfer ends on the last one, not this one.
+      if (session.filesReceived < session.files.length) {
+        return Response.ok('Received');
+      }
+    }
+
+    _speedometer.stop();
+    return _finishTransfer(session);
+  }
+
+  /// Runs [receive], turning the ways receiving can fail into the response the
+  /// sender sees and the state this device publishes.
+  ///
+  /// Returns null when the bytes arrived, so a caller can carry on.
+  Future<Response?> _receiveGuarded(
+    _Session session,
+    Future<void> Function() receive,
+  ) async {
     try {
-      await _receiveFiles(request, session);
+      await receive();
+      return null;
     } on TimeoutException {
       _finishFailed(session, TransferFailure.timeout);
       return Response(408, body: 'The sender stopped responding');
@@ -359,10 +477,12 @@ class Server {
       log('Receiving failed', error: e, stackTrace: s);
       _finishFailed(session, TransferFailure.unknown);
       return Response.internalServerError(body: 'Transfer failed');
-    } finally {
-      _speedometer.stop();
     }
+  }
 
+  /// Publishes the ending for a transfer whose bytes have all arrived, or that
+  /// somebody gave up on, and releases the session.
+  Response _finishTransfer(_Session session) {
     final cancelledBy = session.cancelledBy;
     if (cancelledBy != null) {
       session.hangUp();
@@ -438,6 +558,73 @@ class Server {
           if (!complete) await _deleteQuietly(destination);
         }
       }
+    }
+  }
+
+  /// Writes one raw-body request straight to [destination].
+  ///
+  /// No buffer between the socket and the sink. Coalescing writes to a
+  /// megabyte first measured at about 3% here, which does not pay for extra
+  /// state in a path that must not lose bytes; the cost that mattered was
+  /// multipart, and that is already gone. See `tool/transfer_bench.dart`.
+  Future<void> _receiveBlob(
+    Request request,
+    _Session session,
+    File destination,
+    OfferedFile offered,
+    String fileName,
+  ) async {
+    final sink = destination.openWrite();
+    var complete = false;
+    var received = 0;
+    var lastProgress = DateTime.now();
+
+    try {
+      await for (final chunk in request.read().timeout(_chunkTimeout)) {
+        if (session.cancelled) return;
+
+        received += chunk.length;
+        // A sender that keeps going past the size it offered is either broken
+        // or trying to fill the disk. The multipart path could not tell, since
+        // a part carries no length of its own.
+        if (received > offered.size) {
+          throw const FormatException('Sender exceeded the size it offered');
+        }
+
+        if (!disableFileWrite) sink.add(chunk);
+        _speedometer.count(chunk.length);
+
+        final now = DateTime.now();
+        if (now.difference(lastProgress) >= _progressInterval) {
+          lastProgress = now;
+          session.send(
+            ProgressFrame(
+              sessionId: session.id,
+              bytesReceived:
+                  _speedometer.readingStream.value?.totalBytesTransferred ?? 0,
+              fileName: fileName,
+            ),
+          );
+        }
+      }
+
+      // A body that stops early leaves a file that is not what was offered.
+      // Better to fail the transfer than to hand over a truncated file that
+      // looks finished.
+      if (received < offered.size) {
+        throw const FormatException('Sender sent less than it offered');
+      }
+
+      await sink.flush();
+      complete = true;
+    } finally {
+      try {
+        await sink.close();
+      } catch (_) {
+        // Closing re-throws whatever already broke the write; that error is on
+        // its way up and must not be masked by this one.
+      }
+      if (!complete) await _deleteQuietly(destination);
     }
   }
 

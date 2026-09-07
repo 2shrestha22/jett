@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -213,6 +212,7 @@ class Client {
           ],
           totalSize: totalSize,
           requestVerification: !trusted,
+          dataPlaneVersion: kDataPlaneVersion,
           senderCertificate: deviceIdentity.certificatePem,
           signature: deviceIdentity.keys.sign(
             attestationStatement(session, peerFingerprint),
@@ -246,11 +246,25 @@ class Client {
         return;
       }
 
+      // The receiver's acceptance settles which bulk-data path to use; it may
+      // be older than this build and have chosen multipart. Anything that is
+      // not an acceptance has already returned above.
+      final dataPlaneVersion = reply is AcceptedFrame
+          ? reply.dataPlaneVersion
+          : 1;
+
       _emit(
         session,
         TransferInProgress(sessionId: session, peerAddress: ipAddr),
       );
-      await _upload(session, sized, totalSize, ipAddr, httpClient);
+      await _upload(
+        session,
+        sized,
+        totalSize,
+        ipAddr,
+        httpClient,
+        dataPlaneVersion,
+      );
     } on TimeoutException {
       _fail(session, TransferFailure.timeout);
     } on WebSocketChannelException catch (e) {
@@ -328,6 +342,7 @@ class Client {
     int totalFileSize,
     String ipAddr,
     HttpClient httpClient,
+    int dataPlaneVersion,
   ) async {
     // user already cancelled send, using reset()
     if (_abortTrigger == null) return;
@@ -335,6 +350,94 @@ class Client {
     _speedometer.reset();
     _speedometer.fileSize = totalFileSize;
 
+    // Sent on the client whose callback now pins the peer's key, so these
+    // connections cannot land anywhere but the device that was verified.
+    final sender = IOClient(httpClient);
+    final status = dataPlaneVersion >= 2
+        ? await _uploadBlobs(session, resources, ipAddr, sender)
+        : await _uploadMultipart(session, resources, ipAddr, sender);
+
+    if (status == 200) {
+      _emit(session, TransferCompleted(sessionId: session));
+    } else {
+      _fail(session, _failureForStatus(status));
+    }
+  }
+
+  /// Sends each file as its own request, with the file as the body.
+  ///
+  /// Nothing wraps the bytes, so neither end scans them. Which file each
+  /// request carries is in its path, matching the order of the offer the
+  /// receiver already approved.
+  ///
+  /// Returns the status of the first request that was not accepted, or of the
+  /// last one when every file went through.
+  Future<int> _uploadBlobs(
+    String session,
+    List<_SizedResource> resources,
+    String ipAddr,
+    IOClient sender,
+  ) async {
+    var status = 200;
+
+    for (var index = 0; index < resources.length; index++) {
+      final trigger = _abortTrigger;
+      // reset() clears this; there is no point starting another file.
+      if (trigger == null) return status;
+
+      final (resource, contentLength) = resources[index];
+      _currentFileName = resource.name;
+      _emit(
+        session,
+        TransferInProgress(
+          sessionId: session,
+          peerAddress: ipAddr,
+          fileName: resource.name,
+        ),
+      );
+
+      final request =
+          http.AbortableStreamedRequest(
+            'PUT',
+            Uri.parse('https://$ipAddr:$kTcpPort/v2/blob/$session/$index'),
+            abortTrigger: trigger.future,
+          )..contentLength = contentLength;
+
+      unawaited(
+        request.sink
+            .addStream(_counted(resource.openRead().cast<List<int>>()))
+            .catchError((Object e, StackTrace s) {
+              log('Request body stream failed', error: e, stackTrace: s);
+              // unblock send(), which would otherwise wait on a body that will
+              // never arrive
+              _abort();
+            })
+            .whenComplete(request.sink.close),
+      );
+
+      final response = await sender.send(request);
+      // Drained before the next file so the connection can be reused; an
+      // unread body would leave it unusable and force a fresh handshake.
+      await response.stream.drain<void>();
+
+      status = response.statusCode;
+      if (status != 200) return status;
+    }
+
+    return status;
+  }
+
+  /// Sends every file in one `multipart/form-data` request.
+  ///
+  /// Kept for receivers that predate the raw-body path. It is roughly half the
+  /// speed — both ends have to scan every byte for a boundary that may straddle
+  /// any two chunks — so it is only used when the receiver asks for it.
+  Future<int> _uploadMultipart(
+    String session,
+    List<_SizedResource> resources,
+    String ipAddr,
+    IOClient sender,
+  ) async {
     final uri = Uri.parse('https://$ipAddr:$kTcpPort/upload?session=$session');
 
     final streamedRequest = http.AbortableStreamedRequest(
@@ -401,18 +504,19 @@ class Client {
           })
           .whenComplete(streamedRequest.sink.close),
     );
-    // Sent on the client whose callback now pins the peer's key, so this
-    // connection cannot land anywhere but the device that was verified.
-    final httpResponse = await IOClient(httpClient).send(streamedRequest);
 
-    if (httpResponse.statusCode == 200) {
-      final response = await _readResponseAsString(httpResponse);
-      log(response);
-      _emit(session, TransferCompleted(sessionId: session));
-    } else {
-      _fail(session, _failureForStatus(httpResponse.statusCode));
-    }
+    final response = await sender.send(streamedRequest);
+    await response.stream.drain<void>();
+    return response.statusCode;
   }
+
+  /// Counts bytes as they go past on their way into a request body.
+  ///
+  /// The chunks are handed straight on, so measuring costs no copy.
+  Stream<List<int>> _counted(Stream<List<int>> source) => source.map((chunk) {
+    _speedometer.count(chunk.length);
+    return chunk;
+  });
 
   /// True once [session] has reached an outcome, after which the socket and
   /// upload unwinding are just noise.
@@ -474,16 +578,6 @@ TransferFailure _failureForStatus(int statusCode) => switch (statusCode) {
   408 => TransferFailure.timeout,
   _ => TransferFailure.unknown,
 };
-
-Future<String> _readResponseAsString(http.StreamedResponse response) {
-  final completer = Completer<String>();
-  final contents = StringBuffer();
-  response.stream.transform(utf8.decoder).listen((String data) {
-    contents.write(data);
-  }, onDone: () => completer.complete(contents.toString()));
-
-  return completer.future;
-}
 
 MediaType? _getContentType(String? mimeType) {
   final contentType = mimeType != null ? MediaType.parse(mimeType) : null;

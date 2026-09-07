@@ -12,6 +12,16 @@ part 'protocol.mapper.dart';
 String attestationStatement(String sessionId, String receiverFingerprint) =>
     'jett-auth-v1:$sessionId:$receiverFingerprint';
 
+/// The bulk-data path two builds can both speak: the lower of what each of
+/// them offers.
+///
+/// [offered] is what the sender said it can do, defaulting to 1 when the field
+/// is missing because the sender predates it. Taking the lower means a new
+/// build never asks an old one for an endpoint it does not serve, and an old
+/// build is never told about a version it would not understand.
+int negotiatedDataPlaneVersion(int offered) =>
+    offered < kDataPlaneVersion ? offered : kDataPlaneVersion;
+
 /// A file the sender is offering, described before any bytes move so the
 /// receiver can show what it is agreeing to.
 @MappableClass()
@@ -50,6 +60,14 @@ class RequestFrame extends ControlMessage with RequestFrameMappable {
   /// so a party in the middle cannot make both screens agree.
   final bool requestVerification;
 
+  /// The highest bulk-data version this sender can use. See
+  /// [kDataPlaneVersion].
+  ///
+  /// Defaults to 1 rather than to [kDataPlaneVersion] so that a frame from a
+  /// build predating this field decodes as multipart-only — which is exactly
+  /// what such a build speaks. Senders that can do better say so explicitly.
+  final int dataPlaneVersion;
+
   /// The sender's certificate, and its signature over this session and the
   /// receiver's fingerprint.
   ///
@@ -69,13 +87,22 @@ class RequestFrame extends ControlMessage with RequestFrameMappable {
     required this.signature,
     this.requestVerification = false,
     this.protocolVersion = kProtocolVersion,
+    this.dataPlaneVersion = 1,
   });
 }
 
 /// Receiver approved. Only now may the sender upload, and only for this id.
 @MappableClass(discriminatorValue: 'accepted')
 class AcceptedFrame extends ControlMessage with AcceptedFrameMappable {
-  const AcceptedFrame({required super.sessionId});
+  /// Which bulk-data path the receiver settled on: the lower of what the two
+  /// builds support. The sender uploads the way this says, not the way it
+  /// would have preferred.
+  ///
+  /// Defaults to 1 for the same reason as [RequestFrame.dataPlaneVersion] — an
+  /// acceptance from a build that predates the field means multipart.
+  final int dataPlaneVersion;
+
+  const AcceptedFrame({required super.sessionId, this.dataPlaneVersion = 1});
 }
 
 /// Receiver refused, with the reason the sender should show.

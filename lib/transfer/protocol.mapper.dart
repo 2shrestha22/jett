@@ -268,6 +268,13 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     opt: true,
     def: kProtocolVersion,
   );
+  static int _$dataPlaneVersion(RequestFrame v) => v.dataPlaneVersion;
+  static const Field<RequestFrame, int> _f$dataPlaneVersion = Field(
+    'dataPlaneVersion',
+    _$dataPlaneVersion,
+    opt: true,
+    def: 1,
+  );
 
   @override
   final MappableFields<RequestFrame> fields = const {
@@ -279,6 +286,7 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     #signature: _f$signature,
     #requestVerification: _f$requestVerification,
     #protocolVersion: _f$protocolVersion,
+    #dataPlaneVersion: _f$dataPlaneVersion,
   };
 
   @override
@@ -299,6 +307,7 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
       signature: data.dec(_f$signature),
       requestVerification: data.dec(_f$requestVerification),
       protocolVersion: data.dec(_f$protocolVersion),
+      dataPlaneVersion: data.dec(_f$dataPlaneVersion),
     );
   }
 
@@ -380,6 +389,7 @@ abstract class RequestFrameCopyWith<$R, $In extends RequestFrame, $Out>
     String? signature,
     bool? requestVerification,
     int? protocolVersion,
+    int? dataPlaneVersion,
   });
   RequestFrameCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -413,6 +423,7 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     String? signature,
     bool? requestVerification,
     int? protocolVersion,
+    int? dataPlaneVersion,
   }) => $apply(
     FieldCopyWithData({
       if (sessionId != null) #sessionId: sessionId,
@@ -424,6 +435,7 @@ class _RequestFrameCopyWithImpl<$R, $Out>
       if (requestVerification != null)
         #requestVerification: requestVerification,
       if (protocolVersion != null) #protocolVersion: protocolVersion,
+      if (dataPlaneVersion != null) #dataPlaneVersion: dataPlaneVersion,
     }),
   );
   @override
@@ -442,6 +454,7 @@ class _RequestFrameCopyWithImpl<$R, $Out>
       or: $value.requestVerification,
     ),
     protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
+    dataPlaneVersion: data.get(#dataPlaneVersion, or: $value.dataPlaneVersion),
   );
 
   @override
@@ -470,9 +483,19 @@ class AcceptedFrameMapper extends SubClassMapperBase<AcceptedFrame> {
     'sessionId',
     _$sessionId,
   );
+  static int _$dataPlaneVersion(AcceptedFrame v) => v.dataPlaneVersion;
+  static const Field<AcceptedFrame, int> _f$dataPlaneVersion = Field(
+    'dataPlaneVersion',
+    _$dataPlaneVersion,
+    opt: true,
+    def: 1,
+  );
 
   @override
-  final MappableFields<AcceptedFrame> fields = const {#sessionId: _f$sessionId};
+  final MappableFields<AcceptedFrame> fields = const {
+    #sessionId: _f$sessionId,
+    #dataPlaneVersion: _f$dataPlaneVersion,
+  };
 
   @override
   final String discriminatorKey = 'type';
@@ -483,7 +506,10 @@ class AcceptedFrameMapper extends SubClassMapperBase<AcceptedFrame> {
       ControlMessageMapper.ensureInitialized();
 
   static AcceptedFrame _instantiate(DecodingData data) {
-    return AcceptedFrame(sessionId: data.dec(_f$sessionId));
+    return AcceptedFrame(
+      sessionId: data.dec(_f$sessionId),
+      dataPlaneVersion: data.dec(_f$dataPlaneVersion),
+    );
   }
 
   @override
@@ -549,7 +575,7 @@ extension AcceptedFrameValueCopy<$R, $Out>
 abstract class AcceptedFrameCopyWith<$R, $In extends AcceptedFrame, $Out>
     implements ControlMessageCopyWith<$R, $In, $Out> {
   @override
-  $R call({String? sessionId});
+  $R call({String? sessionId, int? dataPlaneVersion});
   AcceptedFrameCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -562,11 +588,17 @@ class _AcceptedFrameCopyWithImpl<$R, $Out>
   late final ClassMapperBase<AcceptedFrame> $mapper =
       AcceptedFrameMapper.ensureInitialized();
   @override
-  $R call({String? sessionId}) =>
-      $apply(FieldCopyWithData({if (sessionId != null) #sessionId: sessionId}));
+  $R call({String? sessionId, int? dataPlaneVersion}) => $apply(
+    FieldCopyWithData({
+      if (sessionId != null) #sessionId: sessionId,
+      if (dataPlaneVersion != null) #dataPlaneVersion: dataPlaneVersion,
+    }),
+  );
   @override
-  AcceptedFrame $make(CopyWithData data) =>
-      AcceptedFrame(sessionId: data.get(#sessionId, or: $value.sessionId));
+  AcceptedFrame $make(CopyWithData data) => AcceptedFrame(
+    sessionId: data.get(#sessionId, or: $value.sessionId),
+    dataPlaneVersion: data.get(#dataPlaneVersion, or: $value.dataPlaneVersion),
+  );
 
   @override
   AcceptedFrameCopyWith<$R2, AcceptedFrame, $Out2> $chain<$R2, $Out2>(
