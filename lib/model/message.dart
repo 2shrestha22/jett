@@ -31,6 +31,5 @@ class Message with MessageMappable {
     this.fingerprint,
   });
 
-  static final fromMap = MessageMapper.fromMap;
   static final fromJson = MessageMapper.fromJson;
 }

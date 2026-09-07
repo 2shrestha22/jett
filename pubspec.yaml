@@ -35,16 +35,13 @@ dependencies:
   shelf_router: ^1.1.4
   path_provider: ^2.1.5
   http: ^1.5.0
-  file_picker: ^12.2.0
   path: ^1.9.1
   package_info_plus: ^10.2.1
   dart_mappable: ^4.6.0
   flutter_animate: ^4.5.2
   forui: ^0.26.0
-  forui_assets: ^0.25.0
   mime: ^2.0.0
   network_info_plus: ^8.2.1
-  image_picker: ^1.1.2
   fast_file_picker: ^1.0.1
   uri_content: ^4.0.0
   flutter_hooks: ^0.21.3+1

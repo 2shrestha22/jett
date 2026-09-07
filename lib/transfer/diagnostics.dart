@@ -55,7 +55,4 @@ class TransferDiagnostics {
 
   final sent = ValueNotifier<TransferReport?>(null);
   final received = ValueNotifier<TransferReport?>(null);
-
-  void recordSent(TransferReport report) => sent.value = report;
-  void recordReceived(TransferReport report) => received.value = report;
 }

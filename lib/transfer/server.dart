@@ -514,14 +514,12 @@ class Server {
     final transport = session.transport;
     if (transport != null && session.clock.isRunning) {
       session.clock.stop();
-      TransferDiagnostics.instance.recordReceived(
-        TransferReport(
-          transport: transport,
-          bytes: session.nativeCounted > 0
-              ? session.nativeCounted
-              : session.totalSize,
-          elapsed: session.clock.elapsed,
-        ),
+      TransferDiagnostics.instance.received.value = TransferReport(
+        transport: transport,
+        bytes: session.nativeCounted > 0
+            ? session.nativeCounted
+            : session.totalSize,
+        elapsed: session.clock.elapsed,
       );
     }
 

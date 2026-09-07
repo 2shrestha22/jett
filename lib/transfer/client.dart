@@ -275,15 +275,11 @@ class Client {
         await _upload(session, sized, totalSize, ipAddr, httpClient);
       }
       started.stop();
-      TransferDiagnostics.instance.recordSent(
-        TransferReport(
-          transport: _fellBackBecause == null
-              ? Transport.native
-              : Transport.dart,
-          fellBackBecause: _fellBackBecause,
-          bytes: totalSize,
-          elapsed: started.elapsed,
-        ),
+      TransferDiagnostics.instance.sent.value = TransferReport(
+        transport: _fellBackBecause == null ? Transport.native : Transport.dart,
+        fellBackBecause: _fellBackBecause,
+        bytes: totalSize,
+        elapsed: started.elapsed,
       );
     } on TimeoutException {
       _fail(session, TransferFailure.timeout);

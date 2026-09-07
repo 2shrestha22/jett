@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:forui/forui.dart';
-import 'package:jett/core/hooks.dart';
+import 'package:jett/widgets/hooks.dart';
 import 'package:jett/model/transfer_status.dart';
-import 'package:jett/screen/widgets/speedometer_widget.dart';
+import 'package:jett/widgets/speedometer_widget.dart';
 import 'package:jett/transfer/client.dart';
 import 'package:jett/transfer/server.dart';
 import 'package:jett/transfer/speedometer.dart';
