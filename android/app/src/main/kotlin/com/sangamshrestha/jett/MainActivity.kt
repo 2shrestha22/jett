@@ -1,6 +1,7 @@
 package com.sangamshrestha.jett
 
 import APKInfo
+import FlutterError
 import JettHostApi
 import PlatformFile
 import Version
@@ -86,6 +87,26 @@ class MainActivity : FlutterActivity(), JettHostApi {
             } else null
         }
 
+    }
+
+    /**
+     * Opens [uri] for reading and detaches the descriptor for the caller.
+     *
+     * `detachFd` rather than `fd`: it transfers ownership, so the
+     * `ParcelFileDescriptor` going out of scope here does not close a
+     * descriptor the Rust data plane is about to read from. Using `fd` would
+     * hand over something already closed by the time it is used.
+     *
+     * Nothing on this side closes it afterwards. The receiving end owns it.
+     */
+    override fun openFileDescriptor(uri: String): Long {
+        val descriptor = contentResolver.openFileDescriptor(Uri.parse(uri), "r")
+            ?: throw FlutterError(
+                "unopenable",
+                "The provider returned no descriptor for $uri",
+                null
+            )
+        return descriptor.detachFd().toLong()
     }
 
     private fun handleIntent(intent: Intent?, isOnCreate: Boolean) {

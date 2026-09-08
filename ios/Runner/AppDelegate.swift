@@ -67,6 +67,21 @@ import UIKit
         return []
     }
 
+    /// Never called on iOS, and implemented only because the channel is shared
+    /// with Android.
+    ///
+    /// The descriptor exists to get around `content://` URIs, which are an
+    /// Android construct. Every source here — the document picker and files
+    /// shared into the app — already resolves to a real path that the native
+    /// data plane opens itself, so there is nothing this could usefully return.
+    func openFileDescriptor(uri: String) throws -> Int64 {
+        throw PigeonError(
+            code: "unsupported",
+            message: "iOS resolves its sources to paths; there is no descriptor to hand over",
+            details: nil
+        )
+    }
+
     func getPlatformVersion() throws -> Version {
         var version = Version()
         version.string = "iOS " + UIDevice.current.systemVersion

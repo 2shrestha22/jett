@@ -119,6 +119,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Closes the prompt currently on screen, if any, without answering it.
   VoidCallback? _closePrompt;
 
+  /// Asks the user to compare this device's words against the ones shown on
+  /// the device being sent to, before anything leaves here.
+  Future<bool> _confirmTrust(
+    String peerName,
+    List<String> words,
+    Future<void> dismissed,
+  ) async {
+    if (!mounted) return false;
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+    var settled = false;
+    // the other device answered or hung up while this was still on screen
+    unawaited(
+      dismissed.then((_) {
+        if (settled) return;
+        settled = true;
+        navigator.pop();
+      }),
+    );
+
+    final confirmed = await showFDialog<bool>(
+      context: context,
+      builder: (context, _, _) {
+        final theme = context.theme;
+        return AdaptiveDialog(
+          title: Text('Verify device'),
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
+            children: [
+              // Names the device so the person knows which screen to compare
+              // against; nothing else competes with the words here.
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(text: 'Does '),
+                    TextSpan(
+                      text: peerName,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: ' show these same words?'),
+                  ],
+                  style: theme.typography.body.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colors.border),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  words.join('   '),
+                  textAlign: TextAlign.center,
+                  style: theme.typography.body.md.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FButton(
+              variant: .secondary,
+              onPress: () => Navigator.pop(context, false),
+              child: Text('Doesn\'t match'),
+            ),
+            FButton(
+              variant: .primary,
+              onPress: () => Navigator.pop(context, true),
+              child: Text('Yes, send'),
+            ),
+          ],
+        );
+      },
+    );
+
+    settled = true;
+    return confirmed ?? false;
+  }
+
   Future<void> _initServer() async {
     server.transferState.listen((state) {
       // The sender dropped its socket, was superseded, or moved on: take the
@@ -150,6 +235,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final senderName = server.senderName;
     final files = server.offeredFiles;
     final totalSize = server.offeredTotalSize;
+    // deliberately slow, and off the main isolate; the screen may be gone by
+    // the time it returns
+    final words = await server.verificationPrompt();
+    if (!mounted) return;
 
     _promptedSession = sessionId;
     var settled = false;
@@ -171,7 +260,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           title: Text('Incoming File Transfer'),
           body: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
             children: [
               RichText(
                 text: TextSpan(
@@ -191,6 +281,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+              // Reference material, not a second question. The decision about
+              // whether the words match is made on the sending device, which
+              // is the only side that can refuse in time to matter. Accepting
+              // here is about the files.
+              if (words.isNotEmpty) ...[
+                Text(
+                  'This device is showing these words to '
+                  '${senderName.isEmpty ? 'the sender' : senderName}.',
+                  style: theme.typography.body.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: theme.colors.border),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    words.join('   '),
+                    textAlign: TextAlign.center,
+                    style: theme.typography.body.md.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -340,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           onTap: (device) async {
             // a transfer is already running, ignore the tap instead of
             // starting a second one that would clobber its state
-            if (!client.startUpload(resources, device.ipAddress)) return;
+            if (!client.startUpload(resources, device, _confirmTrust)) return;
             await context.push('/send');
             client.reset();
           },

@@ -41,6 +41,8 @@ class TransferFailureMapper extends EnumMapper<TransferFailure> {
         return TransferFailure.storageError;
       case r'versionMismatch':
         return TransferFailure.versionMismatch;
+      case r'unverifiedSender':
+        return TransferFailure.unverifiedSender;
       case r'unknown':
         return TransferFailure.unknown;
       default:
@@ -65,6 +67,8 @@ class TransferFailureMapper extends EnumMapper<TransferFailure> {
         return r'storageError';
       case TransferFailure.versionMismatch:
         return r'versionMismatch';
+      case TransferFailure.unverifiedSender:
+        return r'unverifiedSender';
       case TransferFailure.unknown:
         return r'unknown';
     }
