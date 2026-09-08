@@ -44,9 +44,11 @@ String safeFileName(String? requested) {
   final flattened = (requested ?? '').replaceAll(r'\', '/');
   final base = flattened.split('/').last.trim();
 
-  if (base.isEmpty || base == '.' || base == '..') return 'file';
-  // a leading dot would hide the file, which a sender should not get to decide
-  return base.startsWith('.') ? base.substring(1) : base;
+  // Every leading dot, not just the first: "..x" would otherwise still arrive
+  // hidden, and running this twice would not agree with running it once.
+  final visible = base.replaceFirst(RegExp(r'^\.+'), '');
+
+  return visible.isEmpty ? 'file' : visible;
 }
 
 /// Removes a partial file, reporting rather than throwing if it will not go,

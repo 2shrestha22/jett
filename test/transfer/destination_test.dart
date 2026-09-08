@@ -35,6 +35,27 @@ void main() {
 
     test('cannot hide the file with a leading dot', () {
       expect(safeFileName('.ssh_config'), 'ssh_config');
+      expect(safeFileName('..ssh_config'), 'ssh_config');
+      expect(safeFileName('...x'), 'x');
+    });
+
+    test('running it twice agrees with running it once', () {
+      const names = [
+        'holiday.jpg',
+        '..foo',
+        '...x',
+        '.bashrc',
+        '../../etc/passwd',
+        '..',
+        '',
+      ];
+      for (final name in names) {
+        expect(
+          safeFileName(safeFileName(name)),
+          safeFileName(name),
+          reason: 'from $name',
+        );
+      }
     });
 
     test('falls back to something usable when there is no name', () {
@@ -53,6 +74,9 @@ void main() {
         '/absolute/path',
         'a/b/c',
         './x',
+        '..x',
+        '...x',
+        '../..x',
       ];
       for (final name in nasty) {
         final safe = safeFileName(name);
