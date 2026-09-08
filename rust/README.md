@@ -156,6 +156,17 @@ Regenerate only if deliberately replacing it:
 
     flutter_rust_bridge_codegen generate
 
+Only needed after changing something in `src/api/` — `flutter_rust_bridge.yaml`
+sets `rust_input: crate::api`, so that is the whole FFI surface and the rest of
+the crate is internal. Editing `client.rs`, `server.rs` or `tls.rs` regenerates
+nothing.
+
+Forgetting is not silent: `src/frb_generated.rs` is committed and compiled, so a
+stale binding fails the build rather than misbehaving at runtime.
+
+    error[E0063]: missing field `fd` in initializer of `OutgoingFileSpec`
+       --> src/frb_generated.rs
+
 Needs `flutter` on PATH, which mise does not export by default:
 
     export PATH="$HOME/.local/share/mise/installs/flutter/3.47.2/bin:$PATH"
