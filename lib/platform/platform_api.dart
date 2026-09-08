@@ -24,6 +24,16 @@ class PlatformApi {
     return _hostApi.getPlatformVersion();
   }
 
+  /// Opens a `content://` URI and hands back a descriptor for it.
+  ///
+  /// Android only. The descriptor is detached from the platform object that
+  /// produced it, so **the caller owns it** and must close it — that is what
+  /// `DataPlane.closeDescriptor` is for — on every path where it is not handed
+  /// to the data plane, which adopts it.
+  Future<int> openFileDescriptor(String uri) {
+    return _hostApi.openFileDescriptor(uri);
+  }
+
   Future<List<ContentResource>> getInitialFiles() async {
     final files = await _hostApi.getInitialFiles();
 

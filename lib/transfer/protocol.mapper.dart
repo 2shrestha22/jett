@@ -244,12 +244,36 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     'totalSize',
     _$totalSize,
   );
+  static String _$senderCertificate(RequestFrame v) => v.senderCertificate;
+  static const Field<RequestFrame, String> _f$senderCertificate = Field(
+    'senderCertificate',
+    _$senderCertificate,
+  );
+  static String _$signature(RequestFrame v) => v.signature;
+  static const Field<RequestFrame, String> _f$signature = Field(
+    'signature',
+    _$signature,
+  );
+  static bool _$requestVerification(RequestFrame v) => v.requestVerification;
+  static const Field<RequestFrame, bool> _f$requestVerification = Field(
+    'requestVerification',
+    _$requestVerification,
+    opt: true,
+    def: false,
+  );
   static int _$protocolVersion(RequestFrame v) => v.protocolVersion;
   static const Field<RequestFrame, int> _f$protocolVersion = Field(
     'protocolVersion',
     _$protocolVersion,
     opt: true,
     def: kProtocolVersion,
+  );
+  static int _$dataPlaneVersion(RequestFrame v) => v.dataPlaneVersion;
+  static const Field<RequestFrame, int> _f$dataPlaneVersion = Field(
+    'dataPlaneVersion',
+    _$dataPlaneVersion,
+    opt: true,
+    def: 1,
   );
 
   @override
@@ -258,7 +282,11 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
     #senderName: _f$senderName,
     #files: _f$files,
     #totalSize: _f$totalSize,
+    #senderCertificate: _f$senderCertificate,
+    #signature: _f$signature,
+    #requestVerification: _f$requestVerification,
     #protocolVersion: _f$protocolVersion,
+    #dataPlaneVersion: _f$dataPlaneVersion,
   };
 
   @override
@@ -275,7 +303,11 @@ class RequestFrameMapper extends SubClassMapperBase<RequestFrame> {
       senderName: data.dec(_f$senderName),
       files: data.dec(_f$files),
       totalSize: data.dec(_f$totalSize),
+      senderCertificate: data.dec(_f$senderCertificate),
+      signature: data.dec(_f$signature),
+      requestVerification: data.dec(_f$requestVerification),
       protocolVersion: data.dec(_f$protocolVersion),
+      dataPlaneVersion: data.dec(_f$dataPlaneVersion),
     );
   }
 
@@ -353,7 +385,11 @@ abstract class RequestFrameCopyWith<$R, $In extends RequestFrame, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    String? senderCertificate,
+    String? signature,
+    bool? requestVerification,
     int? protocolVersion,
+    int? dataPlaneVersion,
   });
   RequestFrameCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -383,14 +419,23 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     String? senderName,
     List<OfferedFile>? files,
     int? totalSize,
+    String? senderCertificate,
+    String? signature,
+    bool? requestVerification,
     int? protocolVersion,
+    int? dataPlaneVersion,
   }) => $apply(
     FieldCopyWithData({
       if (sessionId != null) #sessionId: sessionId,
       if (senderName != null) #senderName: senderName,
       if (files != null) #files: files,
       if (totalSize != null) #totalSize: totalSize,
+      if (senderCertificate != null) #senderCertificate: senderCertificate,
+      if (signature != null) #signature: signature,
+      if (requestVerification != null)
+        #requestVerification: requestVerification,
       if (protocolVersion != null) #protocolVersion: protocolVersion,
+      if (dataPlaneVersion != null) #dataPlaneVersion: dataPlaneVersion,
     }),
   );
   @override
@@ -399,7 +444,17 @@ class _RequestFrameCopyWithImpl<$R, $Out>
     senderName: data.get(#senderName, or: $value.senderName),
     files: data.get(#files, or: $value.files),
     totalSize: data.get(#totalSize, or: $value.totalSize),
+    senderCertificate: data.get(
+      #senderCertificate,
+      or: $value.senderCertificate,
+    ),
+    signature: data.get(#signature, or: $value.signature),
+    requestVerification: data.get(
+      #requestVerification,
+      or: $value.requestVerification,
+    ),
     protocolVersion: data.get(#protocolVersion, or: $value.protocolVersion),
+    dataPlaneVersion: data.get(#dataPlaneVersion, or: $value.dataPlaneVersion),
   );
 
   @override
@@ -428,9 +483,26 @@ class AcceptedFrameMapper extends SubClassMapperBase<AcceptedFrame> {
     'sessionId',
     _$sessionId,
   );
+  static int _$dataPlaneVersion(AcceptedFrame v) => v.dataPlaneVersion;
+  static const Field<AcceptedFrame, int> _f$dataPlaneVersion = Field(
+    'dataPlaneVersion',
+    _$dataPlaneVersion,
+    opt: true,
+    def: 1,
+  );
+  static int? _$dataPort(AcceptedFrame v) => v.dataPort;
+  static const Field<AcceptedFrame, int> _f$dataPort = Field(
+    'dataPort',
+    _$dataPort,
+    opt: true,
+  );
 
   @override
-  final MappableFields<AcceptedFrame> fields = const {#sessionId: _f$sessionId};
+  final MappableFields<AcceptedFrame> fields = const {
+    #sessionId: _f$sessionId,
+    #dataPlaneVersion: _f$dataPlaneVersion,
+    #dataPort: _f$dataPort,
+  };
 
   @override
   final String discriminatorKey = 'type';
@@ -441,7 +513,11 @@ class AcceptedFrameMapper extends SubClassMapperBase<AcceptedFrame> {
       ControlMessageMapper.ensureInitialized();
 
   static AcceptedFrame _instantiate(DecodingData data) {
-    return AcceptedFrame(sessionId: data.dec(_f$sessionId));
+    return AcceptedFrame(
+      sessionId: data.dec(_f$sessionId),
+      dataPlaneVersion: data.dec(_f$dataPlaneVersion),
+      dataPort: data.dec(_f$dataPort),
+    );
   }
 
   @override
@@ -507,7 +583,7 @@ extension AcceptedFrameValueCopy<$R, $Out>
 abstract class AcceptedFrameCopyWith<$R, $In extends AcceptedFrame, $Out>
     implements ControlMessageCopyWith<$R, $In, $Out> {
   @override
-  $R call({String? sessionId});
+  $R call({String? sessionId, int? dataPlaneVersion, int? dataPort});
   AcceptedFrameCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
@@ -520,11 +596,23 @@ class _AcceptedFrameCopyWithImpl<$R, $Out>
   late final ClassMapperBase<AcceptedFrame> $mapper =
       AcceptedFrameMapper.ensureInitialized();
   @override
-  $R call({String? sessionId}) =>
-      $apply(FieldCopyWithData({if (sessionId != null) #sessionId: sessionId}));
+  $R call({
+    String? sessionId,
+    int? dataPlaneVersion,
+    Object? dataPort = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (sessionId != null) #sessionId: sessionId,
+      if (dataPlaneVersion != null) #dataPlaneVersion: dataPlaneVersion,
+      if (dataPort != $none) #dataPort: dataPort,
+    }),
+  );
   @override
-  AcceptedFrame $make(CopyWithData data) =>
-      AcceptedFrame(sessionId: data.get(#sessionId, or: $value.sessionId));
+  AcceptedFrame $make(CopyWithData data) => AcceptedFrame(
+    sessionId: data.get(#sessionId, or: $value.sessionId),
+    dataPlaneVersion: data.get(#dataPlaneVersion, or: $value.dataPlaneVersion),
+    dataPort: data.get(#dataPort, or: $value.dataPort),
+  );
 
   @override
   AcceptedFrameCopyWith<$R2, AcceptedFrame, $Out2> $chain<$R2, $Out2>(

@@ -30,6 +30,9 @@ enum TransferFailure {
   /// The peer speaks a different version of the control protocol.
   versionMismatch,
 
+  /// The sender could not prove it holds the key it claimed.
+  unverifiedSender,
+
   unknown,
 }
 

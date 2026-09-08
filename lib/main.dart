@@ -5,13 +5,14 @@ import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jett/discovery/konst.dart';
 import 'package:jett/identity/device_identity.dart';
+import 'package:jett/identity/trust_store.dart';
+import 'package:jett/transfer/data_plane.dart';
 import 'package:jett/platform/platform_api.dart';
 import 'package:jett/screen/about_screen.dart';
 import 'package:jett/screen/apk_picker_screen.dart';
 import 'package:jett/screen/home_screen.dart';
 import 'package:jett/screen/transfer_screen.dart';
 import 'package:jett/theme/theme.dart';
-import 'package:jett/utils/device_info.dart';
 import 'package:jett/utils/package_info.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -19,11 +20,14 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Future.wait([
-    PackageInfoHelper.init(),
-    DeviceInfoHelper.init(),
-    DeviceIdentity.init(),
-  ]);
+  await PackageInfoHelper.init();
+  deviceIdentity = await DeviceIdentity.load();
+  // shares the identity directory, so it opens once the identity exists
+  trustStore = await FileTrustStore.open();
+
+  // Loads the native data plane. Failure is not fatal: transfers fall back to
+  // the Dart path, which speaks the same wire protocol more slowly.
+  await DataPlane.instance.initialize();
 
   if (Platform.isAndroid || Platform.isIOS) {
     PlatformApi.instance.init();

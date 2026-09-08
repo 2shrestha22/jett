@@ -16,6 +16,22 @@ abstract class JettHostApi {
 
   @TaskQueue(type: TaskQueueType.serialBackgroundThread)
   List<APKInfo> getAPKs({bool withSystemApp = false});
+
+  /// Opens [uri] for reading and hands back a file descriptor.
+  ///
+  /// Android only, and the reason the native data plane can send at all: a
+  /// `content://` URI names a file inside another app's provider, which only
+  /// the framework can resolve. Rust cannot open one and Dart can only stream
+  /// it back a chunk at a time — which is every byte crossing the platform
+  /// channel before any of them reach the wire.
+  ///
+  /// **Ownership passes to the caller.** The descriptor is detached from the
+  /// `ParcelFileDescriptor` that produced it, so nothing on the platform side
+  /// will close it; whoever receives it must, on every path including failure
+  /// and cancellation, or the process leaks descriptors until it hits its
+  /// limit.
+  @TaskQueue(type: TaskQueueType.serialBackgroundThread)
+  int openFileDescriptor(String uri);
 }
 
 @EventChannelApi()

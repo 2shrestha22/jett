@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:rxdart/streams.dart';
 import 'package:rxdart/subjects.dart';
@@ -29,6 +31,19 @@ class SpeedometerReading with SpeedometerReadingMappable {
 }
 
 class Speedometer {
+  /// Rolling window used for the reported speed. Wide enough to smooth out
+  /// the jitter of individual chunks.
+  static const _rollingWindowMs = 3000;
+
+  /// Readings are published no more often than this.
+  ///
+  /// [count] runs on every chunk — hundreds of times a second on a fast link —
+  /// but nothing consumes readings at anything like that rate: the progress
+  /// bar only needs to look smooth, the speed text samples at 400ms, and the
+  /// receiver reports progress to the sender every 300ms. Publishing per chunk
+  /// allocated a reading and rebuilt the progress bar for every one of them.
+  static const _publishIntervalMs = 100;
+
   int? fileSize;
 
   final _stopwatch = Stopwatch();
@@ -36,66 +51,82 @@ class Speedometer {
 
   final _reading = BehaviorSubject<SpeedometerReading?>.seeded(null);
   ValueStream<SpeedometerReading?> get readingStream => _reading;
-  // SpeedometerReading? get reading => _reading.value;
 
-  // Keep last chunks for rolling average
-  final List<_ChunkData> _recentChunks = [];
+  /// Chunks inside the rolling window, oldest first.
+  ///
+  /// A queue rather than a list because chunks leave from the front, and
+  /// removing the first element of a list shifts everything behind it.
+  final Queue<_ChunkData> _window = ListQueue<_ChunkData>();
 
-  /// Rolling window in milliseconds for speed calculation.
-  /// Increases the window size to smooth out speed fluctuations.
-  static const _rollingWindowMs = 3000;
+  /// Bytes held in [_window], carried along rather than recomputed.
+  ///
+  /// Summing the window on each chunk made the cost of counting grow with the
+  /// transfer speed, since a faster link puts more chunks inside the same
+  /// three seconds — the work per byte rose exactly when there was least room
+  /// for it.
+  int _windowBytes = 0;
 
-  /// Starts counting transfer rate.
+  int _totalBytes = 0;
+  int _lastPublishedMs = -_publishIntervalMs;
+
+  /// Records [bytes] as having moved, and publishes a reading if one is due.
   void count(int bytes) {
     if (!_stopwatch.isRunning) _stopwatch.start();
+    final now = _stopwatch.elapsedMilliseconds;
 
-    _recentChunks.add(
-      _ChunkData(size: bytes, timestamp: _stopwatch.elapsedMilliseconds),
-    );
+    _window.addLast(_ChunkData(size: bytes, timestamp: now));
+    _windowBytes += bytes;
+    _totalBytes += bytes;
 
-    // Remove old chunks outside rolling window
-    final cutoff = _stopwatch.elapsedMilliseconds - _rollingWindowMs;
-    while (_recentChunks.isNotEmpty && _recentChunks.first.timestamp < cutoff) {
-      _recentChunks.removeAt(0);
+    final cutoff = now - _rollingWindowMs;
+    while (_window.isNotEmpty && _window.first.timestamp < cutoff) {
+      _windowBytes -= _window.removeFirst().size;
     }
 
-    // Calculate rolling average speed (bytes/sec)
-    final totalBytesRecent = _recentChunks.fold<int>(
-      0,
-      (sum, chunk) => sum + chunk.size,
-    );
+    if (now - _lastPublishedMs >= _publishIntervalMs) {
+      _lastPublishedMs = now;
+      _publish(now, _currentSpeedBps());
+    }
+  }
 
-    final diference =
-        _recentChunks.last.timestamp - _recentChunks.first.timestamp;
-    // clamping min value to avoid divide-by-zero errors
-    final elapsedRecentMs = diference.clamp(1, _rollingWindowMs);
-    final speedBps = totalBytesRecent / (elapsedRecentMs / 1000);
+  double _currentSpeedBps() {
+    if (_window.isEmpty) return 0;
+    final span = _window.last.timestamp - _window.first.timestamp;
+    // clamped away from zero: a single chunk spans no time at all
+    return _windowBytes / (span.clamp(1, _rollingWindowMs) / 1000);
+  }
 
-    final totalBytes = (_reading.value?.totalBytesTransferred ?? 0) + bytes;
-
+  void _publish(int elapsedMs, double speedBps) {
     _reading.add(
       SpeedometerReading(
-        totalBytesTransferred: totalBytes,
-        elapsedMilliseconds: _stopwatch.elapsedMilliseconds,
+        totalBytesTransferred: _totalBytes,
+        elapsedMilliseconds: elapsedMs,
         fileSize: fileSize,
         speedBps: speedBps,
       ),
     );
   }
 
+  /// Stops counting and publishes a final reading.
+  ///
+  /// Always publishes, whatever the throttle would have said: the totals from
+  /// the last chunks are read after this to report the average, and would
+  /// otherwise be missing however much arrived since the last reading.
   void stop() {
-    if (_stopwatch.isRunning) {
-      _stopwatch.stop();
-    }
-    // make speed 0 when stopped
-    _reading.add(_reading.value?.copyWith(speedBps: 0));
+    if (_stopwatch.isRunning) _stopwatch.stop();
+    if (_totalBytes == 0) return;
+    _publish(_stopwatch.elapsedMilliseconds, 0);
   }
 
+  /// Clears readings and the session.
   void reset() {
     fileSize = null;
     _stopwatch.reset();
+    _window.clear();
+    _windowBytes = 0;
+    _totalBytes = 0;
+    _lastPublishedMs = -_publishIntervalMs;
     _reading.add(null);
-    _recentChunks.clear();
   }
 }
 
