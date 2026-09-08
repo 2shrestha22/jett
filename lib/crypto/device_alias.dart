@@ -6,11 +6,9 @@ import 'package:jett/crypto/wordlists/alias_words.dart';
 /// The name a device announces itself under, derived from its certificate
 /// fingerprint.
 ///
-/// Derived rather than stored, so it needs nowhere to live and cannot drift
-/// out of step with the key it describes. Two devices would have to land on
-/// the same pair out of 16,384 to clash, which on a home or office network is
-/// remote, and a clash is cosmetic: devices are told apart by their keys, not
-/// their names.
+/// Derived rather than stored, so it cannot drift out of step with the key.
+/// One pair out of 16,384, and a clash is cosmetic: devices are told apart by
+/// their keys.
 String deviceAlias(String fingerprint) {
   final digest = sha256
       .convert(utf8.encode('jett-alias-v1:$fingerprint'))

@@ -151,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             spacing: 12,
             children: [
               // Names the device so the person knows which screen to compare
-              // against; nothing else competes with the words here.
+              // against.
               RichText(
                 text: TextSpan(
                   children: [
@@ -206,8 +206,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _initServer() async {
     server.transferState.listen((state) {
-      // The sender dropped its socket, was superseded, or moved on: take the
-      // prompt down rather than leaving it asking about a dead request.
+      // The sender dropped its socket, was superseded, or moved on; take the
+      // prompt down.
       final open = _promptedSession;
       if (open != null &&
           !(state is TransferWaiting && state.sessionId == open)) {
@@ -281,10 +281,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-              // Reference material, not a second question. The decision about
-              // whether the words match is made on the sending device, which
-              // is the only side that can refuse in time to matter. Accepting
-              // here is about the files.
+              // Reference material, not a second question; whether the words
+              // match is decided on the sending device. Accepting here is
+              // about the files.
               if (words.isNotEmpty) ...[
                 Text(
                   'This device is showing these words to '
@@ -456,8 +455,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         OnlineDevices(
           notifier: presenceNotifier,
           onTap: (device) async {
-            // a transfer is already running, ignore the tap instead of
-            // starting a second one that would clobber its state
+            // a transfer is already running; ignore the tap
             if (!client.startUpload(resources, device, _confirmTrust)) return;
             await context.push('/send');
             client.reset();

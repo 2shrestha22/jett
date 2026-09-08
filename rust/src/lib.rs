@@ -1,15 +1,11 @@
 //! Jett's data plane.
 //!
-//! This crate moves file bytes and nothing else. Discovery, pairing, the signed
-//! attestation, verification words and the control-channel WebSocket all stay in
-//! Dart, where they are already written and reviewed; the FFI surface here is a
-//! control plane for byte movement, never a data plane in its own right.
+//! This crate moves file bytes and nothing else. Discovery, pairing, the
+//! signed attestation, verification words and the control-channel WebSocket
+//! all stay in Dart.
 //!
-//! The split matters for performance. In the Dart implementation every byte of
-//! every transfer is parsed out of a `multipart/form-data` envelope and copied
-//! onto the Dart heap on the way to disk. Here a body is written where it is
-//! told and the only thing that crosses into Dart is a progress event, ten
-//! times a second.
+//! A body is written where it is told, and the only thing crossing into Dart
+//! is a progress event ten times a second.
 
 pub mod api;
 pub mod client;

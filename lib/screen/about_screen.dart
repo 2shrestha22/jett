@@ -140,12 +140,8 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
-/// Which path carried the last transfer in each direction.
-///
-/// The fallback from the native data plane to Dart is silent on purpose, so a
-/// device with no native library still works. That makes a slow transfer
-/// ambiguous — the network may be the limit, or the fast path may simply not
-/// have been used — and this is the only place that says which.
+/// Which path carried the last transfer in each direction. The fallback to
+/// Dart is silent, so this is the only place that says which was used.
 class _TransferEngine extends StatelessWidget {
   const _TransferEngine();
 
@@ -188,8 +184,7 @@ class _Line extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$label: ${report!.summary}'),
-        // Only present when the native path was passed over for a reason worth
-        // knowing, which is the thing that is otherwise invisible.
+        // Only present when the native path was passed over.
         if (report!.fellBackBecause != null)
           Text('    ${report!.fellBackBecause}'),
       ],

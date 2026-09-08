@@ -4,9 +4,8 @@ part 'transfer_status.mapper.dart';
 
 /// Why a transfer ended without delivering its files.
 ///
-/// Also travels on the control channel, so values are serialised by name and
-/// must not be renamed without bumping [kProtocolVersion]. Sender-local
-/// reasons simply never appear on the wire.
+/// Travels on the control channel, so values are serialised by name and must
+/// not be renamed without bumping [kProtocolVersion].
 @MappableEnum()
 enum TransferFailure {
   /// The person on the receiving device declined the request.
@@ -41,8 +40,7 @@ enum CancelledBy { sender, receiver }
 /// The state of the one transfer a device can be part of at a time.
 ///
 /// Every state past [TransferIdle] carries the id of the attempt it belongs
-/// to, so a result arriving late from an abandoned attempt can be recognised
-/// and dropped instead of overwriting a newer one.
+/// to, so a late result from an abandoned attempt can be dropped.
 sealed class TransferState {
   const TransferState();
 

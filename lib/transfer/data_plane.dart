@@ -12,15 +12,12 @@ import 'package:rxdart/rxdart.dart';
 
 /// The Rust data plane: the half of a transfer that moves bytes.
 ///
-/// Everything that decides *whether* a transfer happens — discovery, the signed
-/// attestation, the verification words, the control socket — stays in Dart.
-/// This only carries file contents, and the reason it exists is that dart:io's
-/// TLS pumps every byte through fixed 8 KiB buffers, which costs roughly a
-/// third of the throughput on a phone. See `rust/README.md` for the numbers.
+/// Everything deciding *whether* a transfer happens stays in Dart. This exists
+/// because dart:io's TLS pumps every byte through fixed 8 KiB buffers; see
+/// `rust/README.md` for the numbers.
 ///
-/// Nothing here is required for a transfer to work. If the native library will
-/// not load, [available] stays false and the caller keeps to the Dart path,
-/// which is the same wire protocol at a lower speed.
+/// Not required: if the native library will not load, [available] stays false
+/// and the caller keeps to the Dart path, which is the same wire protocol.
 class DataPlane {
   DataPlane._();
 
@@ -39,18 +36,15 @@ class DataPlane {
 
   final _events = PublishSubject<DataPlaneEvent>();
 
-  /// Progress and outcomes for transfers in both directions.
-  ///
-  /// Already throttled on the Rust side to about ten events a second per file;
-  /// paying the FFI crossing per chunk is what this design exists to avoid.
+  /// Progress and outcomes for transfers in both directions, throttled on the
+  /// Rust side to about ten events a second per file.
   Stream<DataPlaneEvent> get events => _events.stream;
 
   /// Loads the native library. Safe to call more than once.
   ///
-  /// Failure is not fatal and not rethrown: a build whose native library is
-  /// missing for this platform should still transfer, just more slowly.
-  /// [library] is only for tests and tools running outside an app bundle,
-  /// which have nothing for the loader to search; see [debugDataPlaneLibrary].
+  /// Failure is not fatal and not rethrown; the caller falls back to Dart.
+  /// [library] is only for tests and tools running outside an app bundle; see
+  /// [debugDataPlaneLibrary].
   Future<void> initialize({ExternalLibrary? library}) async {
     if (_initialised) return;
     _initialised = true;
@@ -74,9 +68,8 @@ class DataPlane {
 
   /// Starts listening and returns the port bound, or null if unavailable.
   ///
-  /// Pass 0 for [port] to let the OS choose. The port is told to the sender in
-  /// the acceptance frame rather than being fixed, so it cannot collide with
-  /// the control server or with anything else already on the device.
+  /// Pass 0 for [port] to let the OS choose. The bound port is sent to the peer
+  /// in the acceptance frame rather than being fixed.
   Future<int?> startServer({
     required String certificatePem,
     required String privateKeyPem,
@@ -99,10 +92,9 @@ class DataPlane {
 
   /// Authorises a session, once the peer is verified and the user has accepted.
   ///
-  /// Until this is called a request carrying [token] is answered with 404: the
-  /// token is a receipt for a decision made on the control channel, not a
-  /// credential in its own right. [destinations] are absolute paths this side
-  /// has already chosen and sanitised, in the order the files were offered.
+  /// Until this is called a request carrying [token] is answered with 404.
+  /// [destinations] are absolute paths this side has already sanitised, in the
+  /// order the files were offered.
   Future<bool> openSession({
     required String token,
     required List<({String destination, int size})> destinations,
@@ -151,8 +143,7 @@ class DataPlane {
   /// Begins a send and returns a handle for [cancelSend], or null if the data
   /// plane is unavailable and the caller should send the files itself.
   ///
-  /// Returns immediately. Outcomes arrive on [events], so the calling isolate
-  /// is never parked for the length of a transfer.
+  /// Returns immediately; outcomes arrive on [events].
   int? startSend({
     required String host,
     required int port,
@@ -173,8 +164,8 @@ class DataPlane {
                 source: path,
                 size: file.size,
               ),
-              // The descriptor is adopted on the other side of this call, so
-              // from here on closing it is the data plane's job, not ours.
+              // Adopted on the other side of this call; closing it is the data
+              // plane's job from here on.
               NativeFd(:final fd) => rust.OutgoingFileSpec(
                 source: '',
                 fd: fd,
@@ -192,9 +183,7 @@ class DataPlane {
   /// Closes a descriptor opened for a send that did not go ahead.
   ///
   /// [startSend] adopts every descriptor handed to it, so this is only for the
-  /// send that never started — it returning null, or the caller giving up
-  /// first. Dart cannot close a raw descriptor itself, so this crosses to the
-  /// side that already owns their lifetime.
+  /// send that never started, which Dart cannot close itself.
   void closeDescriptor(int fd) {
     if (!_available) return;
     try {
@@ -217,17 +206,12 @@ class DataPlane {
 
 /// What the data plane reports while bytes are moving.
 ///
-/// A sealed class rather than the flat struct that crosses the boundary. The
-/// boundary type stays flat so flutter_rust_bridge does not need `freezed` and
-/// a second build_runner pass; the shape worth writing code against is built
-/// here instead.
+/// A sealed class built from the flat struct that crosses the boundary, which
+/// stays flat so flutter_rust_bridge does not need `freezed`.
 sealed class DataPlaneEvent {
   /// Which half of a transfer this came from: true for a send this device
-  /// started, false for a file arriving.
-  ///
-  /// A device sending and receiving at once sees both on this one stream, and
-  /// the session token cannot separate them — in a test running both ends in
-  /// one process it is the same token on both sides.
+  /// started, false for a file arriving. Both share one stream, and the
+  /// session token cannot separate them.
   final bool sending;
 
   /// The session token the control channel issued, so a listener can tell
@@ -322,9 +306,8 @@ class DataPlaneCancelled extends DataPlaneEvent {
 
 /// The data plane binary, for a test or a tool running outside the app bundle.
 ///
-/// The app itself never needs this: `RustLib.init()` finds the library that
-/// cargokit built into the bundle. A `dart test` process has no bundle, so it
-/// has to be pointed at what `cargo build` produced.
+/// The app never needs this; `RustLib.init()` finds the bundled library. A
+/// `dart test` process has to be pointed at what `cargo build` produced.
 ExternalLibrary? debugDataPlaneLibrary(String repositoryRoot) {
   for (final profile in const ['release', 'debug']) {
     for (final name in const [

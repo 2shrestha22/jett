@@ -31,17 +31,11 @@ class SpeedometerReading with SpeedometerReadingMappable {
 }
 
 class Speedometer {
-  /// Rolling window used for the reported speed. Wide enough to smooth out
-  /// the jitter of individual chunks.
+  /// Rolling window used for the reported speed.
   static const _rollingWindowMs = 3000;
 
-  /// Readings are published no more often than this.
-  ///
-  /// [count] runs on every chunk — hundreds of times a second on a fast link —
-  /// but nothing consumes readings at anything like that rate: the progress
-  /// bar only needs to look smooth, the speed text samples at 400ms, and the
-  /// receiver reports progress to the sender every 300ms. Publishing per chunk
-  /// allocated a reading and rebuilt the progress bar for every one of them.
+  /// Readings are published no more often than this. [count] runs per chunk,
+  /// hundreds of times a second, but nothing consumes readings at that rate.
   static const _publishIntervalMs = 100;
 
   int? fileSize;
@@ -52,18 +46,12 @@ class Speedometer {
   final _reading = BehaviorSubject<SpeedometerReading?>.seeded(null);
   ValueStream<SpeedometerReading?> get readingStream => _reading;
 
-  /// Chunks inside the rolling window, oldest first.
-  ///
-  /// A queue rather than a list because chunks leave from the front, and
-  /// removing the first element of a list shifts everything behind it.
+  /// Chunks inside the rolling window, oldest first. A queue because they leave
+  /// from the front.
   final Queue<_ChunkData> _window = ListQueue<_ChunkData>();
 
-  /// Bytes held in [_window], carried along rather than recomputed.
-  ///
-  /// Summing the window on each chunk made the cost of counting grow with the
-  /// transfer speed, since a faster link puts more chunks inside the same
-  /// three seconds — the work per byte rose exactly when there was least room
-  /// for it.
+  /// Bytes held in [_window], carried along rather than recomputed. Summing on
+  /// each chunk made the cost of counting grow with the transfer speed.
   int _windowBytes = 0;
 
   int _totalBytes = 0;
@@ -107,11 +95,8 @@ class Speedometer {
     );
   }
 
-  /// Stops counting and publishes a final reading.
-  ///
-  /// Always publishes, whatever the throttle would have said: the totals from
-  /// the last chunks are read after this to report the average, and would
-  /// otherwise be missing however much arrived since the last reading.
+  /// Stops counting and publishes a final reading, ignoring the throttle so the
+  /// totals read afterwards include the last chunks.
   void stop() {
     if (_stopwatch.isRunning) _stopwatch.stop();
     if (_totalBytes == 0) return;

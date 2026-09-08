@@ -60,7 +60,7 @@ class MainActivity : FlutterActivity(), JettHostApi {
             val isSplitApk = !app.splitSourceDirs.isNullOrEmpty()
 
 
-            // only return non split apk
+            // non-split APKs only, system apps only when asked
             if ((!isSystemApp || withSystemApp) && !isSplitApk) {
                 val drawable = packageManager.getApplicationIcon(app)
                 val stream = ByteArrayOutputStream()
@@ -70,7 +70,6 @@ class MainActivity : FlutterActivity(), JettHostApi {
 
                 val apkFile = File(app.sourceDir)
                 val fileName = apkFile.name
-                // Convert to content:// URI using FileProvider
                 val apkUri = FileProvider.getUriForFile(
                     context, "${applicationContext.packageName}.fileprovider", apkFile
                 )
@@ -90,14 +89,9 @@ class MainActivity : FlutterActivity(), JettHostApi {
     }
 
     /**
-     * Opens [uri] for reading and detaches the descriptor for the caller.
-     *
-     * `detachFd` rather than `fd`: it transfers ownership, so the
-     * `ParcelFileDescriptor` going out of scope here does not close a
-     * descriptor the Rust data plane is about to read from. Using `fd` would
-     * hand over something already closed by the time it is used.
-     *
-     * Nothing on this side closes it afterwards. The receiving end owns it.
+     * Opens [uri] for reading and hands the raw descriptor to the caller, which
+     * owns it. `detachFd` transfers ownership; `fd` would hand over a
+     * descriptor already closed by the time the data plane reads it.
      */
     override fun openFileDescriptor(uri: String): Long {
         val descriptor = contentResolver.openFileDescriptor(Uri.parse(uri), "r")

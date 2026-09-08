@@ -7,15 +7,11 @@ import 'package:mime/mime.dart';
 import 'package:uri_content/uri_content.dart';
 import 'package:path/path.dart' as path;
 
-// uri_content library supports all platforms so ContentResource can be
-// technically used everywhere and we may not need FileResource
 /// How the native data plane can take hold of a resource's bytes.
 ///
-/// The question "can Rust send this itself?" belongs to the resource, not to
-/// the transfer code. Deciding it by looking at [Resource.identifier] — testing
-/// whether the string starts with a slash, say — gets three cases wrong: a
-/// `content://` URI has no path at all, a `file://` URI has one but does not
-/// look like it, and a Windows path never starts with a slash to begin with.
+/// Each subclass answers for itself; [Resource.identifier] cannot be inspected
+/// for this, since a `content://` URI has no path, a `file://` URI has one that
+/// does not look like it, and a Windows path starts with no slash.
 sealed class NativeSource {
   const NativeSource();
 }
@@ -29,11 +25,9 @@ class NativePath extends NativeSource {
 
 /// An already-open descriptor, for a source with no usable path.
 ///
-/// **Ownership passes to whoever receives this.** The descriptor is detached
-/// from the platform object that produced it, so nothing will close it unless
-/// the receiver does. Handing it to the data plane transfers that duty; if it
-/// is never handed over, the holder must close it — `DataPlane.closeDescriptor`
-/// is how.
+/// **Ownership passes to whoever receives this.** Handing it to the data plane
+/// transfers that duty; otherwise the holder must call
+/// `DataPlane.closeDescriptor`.
 class NativeFd extends NativeSource {
   final int fd;
 
@@ -60,12 +54,11 @@ sealed class Resource {
   /// resource is removed from the send list.
   Future<void> release() async {}
 
-  /// How the native data plane can send this resource, or null if it cannot
-  /// and the bytes have to be read through Dart.
+  /// How the native data plane can send this resource, or null if the bytes
+  /// have to be read through Dart.
   ///
-  /// Called once per transfer, immediately before the send starts. A
-  /// [NativeFd] returned here is opened at that moment and is the caller's to
-  /// close.
+  /// Called once per transfer, immediately before the send starts. A [NativeFd]
+  /// returned here is the caller's to close.
   Future<NativeSource?> nativeSource() async => null;
 }
 
@@ -123,12 +116,10 @@ class ContentResource extends Resource {
   Future<int?> length() => _uriContent.getContentLength(_uri);
 
   /// A `file:` URI is a path wearing a scheme; anything else on Android is a
-  /// provider handle that only the framework can open.
+  /// provider handle only the framework can open.
   ///
-  /// The first case matters more than it looks. Files dropped onto the desktop
-  /// window arrive here as absolute paths and are turned into `file://` URIs by
-  /// [_ensureFileUri], so without this they would read as unopenable and send
-  /// through Dart despite sitting on a local disk.
+  /// Files dropped onto the desktop window arrive as absolute paths and become
+  /// `file://` URIs via [_ensureFileUri], so they take the first case.
   @override
   Future<NativeSource?> nativeSource() async {
     if (_uri.isScheme('file')) return NativePath(_uri.toFilePath());
@@ -139,19 +130,17 @@ class ContentResource extends Resource {
         await PlatformApi.instance.openFileDescriptor(identifier),
       );
     } catch (e) {
-      // A provider that will not open it is not a failure yet: the Dart reader
-      // goes through the same provider by a different route and may still
-      // manage, and if it cannot the transfer fails there with a better error.
+      // Not a failure yet; the Dart reader takes a different route through the
+      // same provider, and fails there with a better error.
       log('No descriptor for $_name; it will be read through Dart', error: e);
       return null;
     }
   }
 }
 
-/// A file picked on iOS/macOS whose security-scoped access is held open
-/// for as long as the resource is in the send list. This lets the file be
-/// read in place at transfer time, without copying it into the app
-/// container. Access is released via [release].
+/// A file picked on iOS/macOS whose security-scoped access is held open for as
+/// long as the resource is in the send list, so it can be read in place rather
+/// than copied into the app container. Released via [release].
 class ScopedFileResource extends Resource {
   final FastFilePickerPath _pickerPath;
   bool? _hasAccess;
@@ -185,26 +174,22 @@ class ScopedFileResource extends Resource {
     _hasAccess = null;
   }
 
-  /// A real path, readable in place for as long as [release] has not been
-  /// called — which is what the scoped access is holding open.
+  /// A real path, readable in place until [release] is called.
   @override
   Future<NativeSource?> nativeSource() async => NativePath(_file.path);
 }
 
 /// A drive letter is indistinguishable from a URI scheme, so `C:\dir\f.bin`
-/// parses as scheme `c` with path `\dir\f.bin` — a URI that names nothing.
-/// Windows paths therefore have to be recognised before [Uri.parse] sees them.
+/// parses as scheme `c`. Windows paths must be recognised before [Uri.parse].
 final _windowsAbsolutePath = RegExp(r'^[a-zA-Z]:[\\/]');
 
 // uri_content does not work without scheme so need to append it manually
 Uri _ensureFileUri(String path) {
   final isWindowsPath = _windowsAbsolutePath.hasMatch(path);
   if (path.startsWith('/') || isWindowsPath) {
-    // Absolute local path → a real file: URI. `Uri.file` rather than string
-    // concatenation because it escapes the path and knows the separator;
-    // `file://$path` leaves a space unescaped and makes nonsense of a
-    // backslash. The convention is chosen by the shape of the path rather than
-    // by the host, so that a Windows path is read as one wherever this runs.
+    // Absolute local path. `Uri.file` rather than string concatenation because
+    // it escapes the path and knows the separator; the convention comes from the
+    // shape of the path, so a Windows path reads as one wherever this runs.
     return Uri.file(path, windows: isWindowsPath);
   } else {
     // Already a URI scheme or relative path → parse as-is

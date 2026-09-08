@@ -25,10 +25,8 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Whether received bytes are dropped instead of written to disk.
 ///
-/// On in debug builds, where transfers are usually being exercised for their
-/// own sake and filling the download directory is a nuisance. Mutable so that
-/// tests which care what lands on disk can turn it off — with it left on, the
-/// receiving path cannot be checked at all.
+/// On in debug builds. Mutable so tests that care what lands on disk can turn
+/// it off.
 bool disableFileWrite = kDebugMode;
 
 final server = Server();
@@ -46,30 +44,28 @@ class _Session {
   /// The sender's fingerprint, proven by the signature on its request.
   final String senderFingerprint;
 
-  /// The bulk-data path settled on for this transfer: the lower of what the
-  /// two builds support. See [kDataPlaneVersion].
+  /// The bulk-data path settled on: the lower of what the two builds support.
+  /// See [kDataPlaneVersion].
   final int dataPlaneVersion;
 
   /// Where each offered file is being written, resolved on the first request
-  /// for that index so a retried one does not allocate a second name.
+  /// for that index so a retry does not allocate a second name.
   final Map<int, File> destinations = {};
 
-  /// How many of the offered files have arrived in full. The transfer is over
-  /// when this reaches the number offered.
+  /// How many offered files have arrived in full. The transfer is over when
+  /// this reaches the number offered.
   int filesReceived = 0;
 
-  /// Bytes the native data plane has reported per file. It reports a total per
-  /// file while the speedometer counts increments, so the running sum is kept
-  /// here and only the difference is handed on.
+  /// Bytes the native data plane has reported per file. It reports totals while
+  /// the speedometer counts increments, so only the difference is handed on.
   final Map<int, int> nativeBytes = {};
   int nativeCounted = 0;
 
-  /// Which file the native data plane is on, so the UI is only told when that
-  /// changes rather than on every progress event.
+  /// Which file the native data plane is on, so the UI is only told when it
+  /// changes.
   int? nativeIndex;
 
-  /// Which path actually carried the bytes, and how long they took. Recorded
-  /// so it can be read on the device rather than inferred from a speed.
+  /// Which path carried the bytes, and how long they took.
   Transport? transport;
   final Stopwatch clock = Stopwatch();
 
@@ -118,9 +114,7 @@ class _Session {
 }
 
 class Server {
-  /// How long an accepted transfer may sit before any bytes arrive. Guards
-  /// against a sender that is accepted and then stops without dropping its
-  /// socket.
+  /// How long an accepted transfer may sit before any bytes arrive.
   static const _uploadStartTimeout = Duration(seconds: 30);
 
   /// How long a stalled upload is tolerated before the transfer is failed.
@@ -132,8 +126,8 @@ class Server {
   final _router = Router();
   HttpServer? _server;
 
-  /// The port the native data plane bound, or null if it is not running. Told
-  /// to senders in the acceptance so they can send bytes there instead.
+  /// The port the native data plane bound, or null if it is not running. Sent
+  /// to senders in the acceptance.
   int? _dataPort;
   StreamSubscription<DataPlaneEvent>? _dataPlaneEvents;
 
@@ -150,8 +144,8 @@ class Server {
 
   _Session? _session;
 
-  /// Whose states are currently being published. Emissions from any other
-  /// session are dropped, so a superseded attempt cannot overwrite a newer one.
+  /// Whose states are currently published. Emissions from any other session are
+  /// dropped.
   String? _stateSessionId;
 
   String get senderIp => _session?.peerAddress ?? '';
@@ -159,13 +153,10 @@ class Server {
   List<OfferedFile> get offeredFiles => _session?.files ?? const [];
   int get offeredTotalSize => _session?.totalSize ?? 0;
 
-  /// Words to show alongside the prompt so the two people can confirm the
-  /// sender is really talking to this device. Empty once the sender knows this
-  /// device's key.
+  /// Words to show alongside the prompt so the two people can confirm the pair.
+  /// Empty once the sender knows this device's key.
   ///
-  /// Off the main isolate: the derivation is deliberately slow, to make an
-  /// attacker's search for a colliding key expensive, and that cost would
-  /// otherwise land as a freeze right before the dialog appears.
+  /// Derived off the main isolate; the derivation is deliberately slow.
   Future<List<String>> verificationPrompt() async {
     final session = _session;
     if (session == null || !session.showVerification) return const [];
@@ -186,9 +177,8 @@ class Server {
         .addMiddleware(logRequests())
         .addHandler(_router.call);
 
-    // Served under this device's own certificate. Senders pin it by
-    // fingerprint, which is what the verification words let the two people
-    // confirm the first time round.
+    // Served under this device's own certificate, which senders pin by
+    // fingerprint.
     final security = SecurityContext(withTrustedRoots: false)
       ..useCertificateChainBytes(utf8.encode(deviceIdentity.certificatePem))
       ..usePrivateKeyBytes(utf8.encode(deviceIdentity.privateKeyPem));
@@ -200,9 +190,8 @@ class Server {
       securityContext: security,
     );
 
-    // Serves the same certificate, on a port of its own. Returns null when the
-    // native library is unavailable, in which case senders are never told about
-    // it and everything goes through the Dart handlers above.
+    // Serves the same certificate on a port of its own. Null when the native
+    // library is unavailable, and senders are then never told about it.
     _dataPort = await DataPlane.instance.startServer(
       certificatePem: deviceIdentity.certificatePem,
       privateKeyPem: deviceIdentity.privateKeyPem,
@@ -225,9 +214,8 @@ class Server {
       if (session == null || !identical(session.socket, socket)) return;
       session.closed = true;
       session.cancelledBy = CancelledBy.sender;
-      // An upload in flight will notice `cancelled` and publish its own
-      // ending; otherwise the sender left mid-prompt and we drop to idle,
-      // which is what dismisses the dialog.
+      // An upload in flight notices `cancelled` and publishes its own ending;
+      // otherwise the sender left mid-prompt and idle dismisses the dialog.
       if (!session.uploading) _endSession(session, const TransferIdle());
     }
 
@@ -293,18 +281,14 @@ class Server {
       return;
     }
 
-    // A sender that cannot do [kDataPlaneVersion] is one this build has no
-    // way to carry bytes for. Refusing here, before the user is asked to accept
-    // anything, is the difference between a peer that says no and a transfer
-    // that dies once it is already moving.
+    // Refused before the user is asked, rather than once bytes are moving.
     if (frame.dataPlaneVersion < kDataPlaneVersion) {
       refuse(TransferFailure.versionMismatch);
       return;
     }
 
     // Dart never shows us a client certificate, so the sender proves which
-    // device it is by signing this session and our fingerprint. Without that
-    // there is no identity here to trust or to build the words from.
+    // device it is by signing this session and our fingerprint.
     final senderFingerprint = verifiedSignerFingerprint(
       certificatePem: frame.senderCertificate,
       signature: frame.signature,
@@ -370,24 +354,21 @@ class Server {
 
   /// Answers an accepted request, once it is known where the files will land.
   ///
-  /// Choosing the destinations here rather than as each file arrives is what
-  /// lets the native data plane be told them up front; it writes where it is
-  /// told and never sees a filename. The Dart handlers reuse the same paths.
+  /// Destinations are chosen up front so the native data plane can be told
+  /// them; it writes where it is told and never sees a filename.
   Future<void> _announceAcceptance(_Session session) async {
     int? dataPort;
 
-    // The floor check when the request arrived already guarantees the version;
-    // it is repeated here because this is the line that decides whether a peer
-    // is handed a port, and that should not depend on a check made elsewhere.
+    // Repeated from the request check: this is the line that decides whether a
+    // peer is handed a port.
     if (session.dataPlaneVersion >= kDataPlaneVersion && _dataPort != null) {
       final destinations = <({String destination, int size})>[];
       for (var index = 0; index < session.files.length; index++) {
         final offered = session.files[index];
         final target = await _unusedPathFor(
           safeFileName(offered.name),
-          // Names are claimed as they are chosen. Two files offered under one
-          // name would otherwise both resolve to it, since neither exists on
-          // disk yet, and the second would overwrite the first.
+          // Claimed as chosen: neither file exists on disk yet, so two offered
+          // under one name would both resolve to it.
           claimed: session.destinations.values.map((f) => f.path).toSet(),
         );
         session.destinations[index] = target;
@@ -401,7 +382,7 @@ class Server {
         dataPort = _dataPort;
       }
       // A session the native side would not open leaves dataPort null, and the
-      // sender falls back to the Dart handlers rather than failing.
+      // sender falls back to the Dart handlers.
     }
 
     if (session.closed) return;
@@ -426,12 +407,10 @@ class Server {
     _endSession(session, const TransferIdle());
   }
 
-  /// One file of a v2 transfer. The body is the file.
+  /// One file of a v2 transfer. The body is the file, written as it arrives.
   ///
-  /// Nothing parses the body: it is written as it arrives. Which file this is
-  /// comes from the index in the path rather than from a filename inside the
-  /// body, so the name written to disk is the one from the offer the user
-  /// approved — not one the sender chose separately afterwards.
+  /// Which file it is comes from the index in the path, so the name on disk is
+  /// the one from the offer the user approved.
   Future<Response> _handleBlob(
     Request request,
     String sessionId,
@@ -454,8 +433,8 @@ class Server {
     final offered = session.files[index];
     final fileName = safeFileName(offered.name);
 
-    // Only the first file of the transfer starts the clock; the rest arrive on
-    // their own requests and must keep counting against the same total.
+    // Only the first file starts the clock; the rest count against the same
+    // total.
     if (!session.uploading) {
       session.uploading = true;
       session.transport = Transport.dart;
@@ -497,10 +476,8 @@ class Server {
     return _finishTransfer(session);
   }
 
-  /// Runs [receive], turning the ways receiving can fail into the response the
-  /// sender sees and the state this device publishes.
-  ///
-  /// Returns null when the bytes arrived, so a caller can carry on.
+  /// Runs [receive], turning a failure into the sender's response and the state
+  /// this device publishes. Returns null when the bytes arrived.
   Future<Response?> _receiveGuarded(
     _Session session,
     Future<void> Function() receive,
@@ -531,8 +508,8 @@ class Server {
         : Response.ok('File uploaded');
   }
 
-  /// Publishes the ending for a transfer whose bytes have all arrived, or that
-  /// somebody gave up on, and releases the session.
+  /// Publishes the ending for a finished or abandoned transfer, and releases
+  /// the session.
   void _publishEnding(_Session session) {
     final transport = session.transport;
     if (transport != null && session.clock.isRunning) {
@@ -564,13 +541,10 @@ class Server {
   }
 
   /// Turns what the native data plane reports into the same states and control
-  /// frames the Dart handlers publish, so nothing above this class can tell
-  /// which one carried the bytes.
+  /// frames the Dart handlers publish.
   void _onDataPlaneEvent(DataPlaneEvent event) {
     final session = _session;
-    // Only arrivals. A device sending at the same time puts its own progress on
-    // this stream, and in a test where both ends share a process every event
-    // would otherwise be counted twice.
+    // Only arrivals; a concurrent send puts its own progress on this stream.
     if (event.sending ||
         session == null ||
         session.id != event.session ||
@@ -616,8 +590,8 @@ class Server {
         );
 
       case DataPlaneFileFinished(:final index):
-        // Settle this file at its full size: the last progress event may have
-        // been throttled away, and the total must not end short.
+        // Settle at the full size; the last progress event may have been
+        // throttled away.
         if (index < session.files.length) {
           session.nativeBytes[index] = session.files[index].size;
           final total = session.nativeBytes.values.fold(0, (a, b) => a + b);
@@ -656,11 +630,7 @@ class Server {
     _endSession(session, TransferFailed(sessionId: session.id, reason: reason));
   }
 
-  /// Writes one raw-body request straight to [destination].
-  ///
-  /// No buffer between the socket and the sink. Coalescing writes to a
-  /// megabyte first measured at about 3% here, which does not pay for extra
-  /// state in a path that must not lose bytes. See `tool/transfer_bench.dart`.
+  /// Writes one raw-body request straight to [destination], unbuffered.
   Future<void> _receiveBlob(
     Request request,
     _Session session,
@@ -678,8 +648,7 @@ class Server {
         if (session.cancelled) return;
 
         received += chunk.length;
-        // A sender that keeps going past the size it offered is either broken
-        // or trying to fill the disk.
+        // A sender past the size it offered is broken or filling the disk.
         if (received > offered.size) {
           throw const FormatException('Sender exceeded the size it offered');
         }
@@ -701,9 +670,7 @@ class Server {
         }
       }
 
-      // A body that stops early leaves a file that is not what was offered.
-      // Better to fail the transfer than to hand over a truncated file that
-      // looks finished.
+      // A body that stops early leaves a truncated file that looks finished.
       if (received < offered.size) {
         throw const FormatException('Sender sent less than it offered');
       }
@@ -714,15 +681,14 @@ class Server {
       try {
         await sink.close();
       } catch (_) {
-        // Closing re-throws whatever already broke the write; that error is on
-        // its way up and must not be masked by this one.
+        // Closing re-throws whatever broke the write, which must not be masked.
       }
       if (!complete) await _deleteQuietly(destination);
     }
   }
 
-  /// Where to put an incoming [fileName] without destroying anything already
-  /// there. A second "photo.jpg" lands as "photo (1).jpg".
+  /// Where to put an incoming [fileName] without overwriting. A second
+  /// "photo.jpg" lands as "photo (1).jpg".
   Future<File> _unusedPathFor(
     String fileName, {
     Set<String> claimed = const {},
@@ -755,8 +721,7 @@ class Server {
   /// Publishes [last] for [session] and releases the slot so the next sender
   /// can be served.
   void _endSession(_Session session, TransferState last) {
-    // Retires the token on the native side too, so it cannot be replayed once
-    // the exchange it belonged to is over.
+    // Retires the token on the native side so it cannot be replayed.
     unawaited(DataPlane.instance.closeSession(session.id));
     _emit(session, last);
     if (_stateSessionId == session.id) _stateSessionId = null;
@@ -791,17 +756,12 @@ class Server {
   }
 }
 
-/// The name a peer asked for, reduced to something that can only land inside
+/// The sender-supplied name, reduced to something that can only land inside
 /// the download directory.
 ///
-/// The name comes out of the offer, which the sender wrote. `path.join` returns
-/// an absolute path unchanged and honours `..`, so without this an accepted
-/// peer could write anywhere this process can reach — over a dotfile, into a
-/// config directory, anywhere.
-///
-/// Both separators are stripped whatever the host platform, since the name
-/// crosses between machines and a Windows sender's backslashes mean nothing to
-/// `path.basename` on POSIX.
+/// `path.join` returns an absolute path unchanged and honours `..`, so without
+/// this a peer could write anywhere this process can reach. Both separators
+/// are stripped whatever the host platform, since the name crosses machines.
 String safeFileName(String? requested) {
   final flattened = (requested ?? '').replaceAll(r'\', '/');
   final base = flattened.split('/').last.trim();

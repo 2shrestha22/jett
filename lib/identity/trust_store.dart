@@ -9,8 +9,7 @@ import 'package:path_provider/path_provider.dart';
 class TrustedPeer {
   final String fingerprint;
 
-  /// What it went by when it was accepted. Kept so the record means something
-  /// to a person reading it; nothing is decided from it.
+  /// What it went by when it was accepted. Nothing is decided from it.
   final String name;
   final DateTime trustedAt;
 
@@ -36,10 +35,8 @@ class TrustedPeer {
 /// The keys this device has accepted, so a peer is verified once rather than
 /// every time.
 ///
-/// A key that is absent is unknown, whether it belongs to a device never seen
-/// before or a familiar one that was reinstalled. Both are treated alike: the
-/// key is the identity, and there is nothing else stable enough to tell those
-/// cases apart.
+/// An absent key is unknown, whether the device is new or was reinstalled;
+/// the key is the identity.
 abstract class TrustStore {
   bool isTrusted(String fingerprint);
   Future<void> trust(String fingerprint, String name);

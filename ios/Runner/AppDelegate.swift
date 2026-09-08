@@ -68,12 +68,8 @@ import UIKit
     }
 
     /// Never called on iOS, and implemented only because the channel is shared
-    /// with Android.
-    ///
-    /// The descriptor exists to get around `content://` URIs, which are an
-    /// Android construct. Every source here — the document picker and files
-    /// shared into the app — already resolves to a real path that the native
-    /// data plane opens itself, so there is nothing this could usefully return.
+    /// with Android. The descriptor works around `content://` URIs; every source
+    /// here already resolves to a real path.
     func openFileDescriptor(uri: String) throws -> Int64 {
         throw PigeonError(
             code: "unsupported",
