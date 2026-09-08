@@ -8,19 +8,15 @@ import 'package:path_provider/path_provider.dart';
 /// This device's identity as the rest of the app sees it: the keys, plus the
 /// name derived from them.
 ///
-/// Everything cryptographic lives in [DeviceKeys]; this type only decides
-/// where those keys are kept and loads them once at startup.
+/// Everything cryptographic lives in [DeviceKeys]; this type decides where the
+/// keys are kept and loads them once at startup.
 class DeviceIdentity {
   final DeviceKeys keys;
 
   /// What this device calls itself to peers, e.g. "Noble Meadow".
   ///
-  /// Generated rather than taken from the operating system. Platform names are
-  /// not unique — Linux reports the distribution, Android a build property
-  /// shared by every unit of a model — and not private either, since a Mac
-  /// reports whatever its owner called it. Following the key also means a
-  /// device that regenerates one stops answering to a name that was verified
-  /// against the old one.
+  /// Derived from the key rather than taken from the OS, whose names are
+  /// neither unique nor private. A regenerated key therefore gets a new name.
   final String alias;
 
   DeviceIdentity(this.keys) : alias = deviceAlias(keys.fingerprint);
@@ -29,11 +25,8 @@ class DeviceIdentity {
   String get certificatePem => keys.certificatePem;
   String get privateKeyPem => keys.privateKeyPem;
 
-  /// Deletes the stored keys, so the next launch mints a new identity.
-  ///
-  /// Not applied to the running app: the server is already serving the old
-  /// certificate and peers have been told the old name, and swapping those
-  /// underneath a live transfer would be worse than asking for a restart.
+  /// Deletes the stored keys, so the next launch mints a new identity. Not
+  /// applied to the running app, which is already serving the old certificate.
   static Future<void> erase() async {
     final support = await getApplicationSupportDirectory();
     final directory = Directory(path.join(support.path, 'identity'));
@@ -43,9 +36,7 @@ class DeviceIdentity {
   /// Loads the stored identity, minting one on first run.
   ///
   /// The key sits in the app's private support directory rather than the
-  /// platform keychain, which keeps the app free of native storage plugins and
-  /// per-platform entitlements. Anything able to read it can already read the
-  /// files being transferred.
+  /// platform keychain, keeping the app free of native storage plugins.
   static Future<DeviceIdentity> load() async {
     final support = await getApplicationSupportDirectory();
     final directory = Directory(path.join(support.path, 'identity'));
@@ -63,8 +54,8 @@ class DeviceIdentity {
 
     await directory.create(recursive: true);
     final keys = DeviceKeys.generate();
-    // key first: a crash between the two writes leaves no certificate, and the
-    // next run regenerates both rather than pairing mismatched halves
+    // key first, so a crash between the writes leaves no certificate and the
+    // next run regenerates both
     await keyFile.writeAsString(keys.privateKeyPem);
     await certFile.writeAsString(keys.certificatePem);
     return DeviceIdentity(keys);

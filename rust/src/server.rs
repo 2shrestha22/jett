@@ -1,8 +1,7 @@
 //! The receiving half: an axum server whose request bodies are file contents.
 //!
-//! A `PUT` here is a seek and a write. Nothing decodes the body, nothing
-//! buffers the file in memory, and nothing crosses into Dart except throttled
-//! progress. That is the whole point of the port — see [`crate::protocol`].
+//! A `PUT` here is a seek and a write. Nothing decodes the body or buffers the
+//! file in memory. See [`crate::protocol`].
 
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -25,21 +24,16 @@ use crate::protocol::RECEIVED_HEADER;
 
 /// Writes are coalesced to this size before reaching the filesystem.
 ///
-/// hyper hands over network-sized chunks — tens of kilobytes — and issuing a
-/// write syscall for each is measurable at gigabit speeds. One megabyte is
-/// enough to make the syscall disappear against the copy without holding a
-/// meaningful amount of a transfer in memory.
+/// hyper hands over network-sized chunks, and a write syscall per chunk is
+/// measurable at gigabit speeds.
 const WRITE_BUFFER_BYTES: usize = 1024 * 1024;
 
 /// A file the control channel has already agreed to accept.
 #[derive(Debug, Clone)]
 pub struct IncomingFile {
-    /// Where this file lands, decided entirely by Dart.
-    ///
-    /// The sender's filename never reaches this crate. Dart already sanitises
-    /// it and resolves collisions (`lib/utils/save_path.dart`), and a second
-    /// implementation of that logic here would be a second chance to get path
-    /// traversal wrong.
+    /// Where this file lands, decided entirely by Dart. The sender's filename
+    /// never reaches this crate; `lib/utils/save_path.dart` sanitises it and
+    /// resolves collisions.
     pub destination: PathBuf,
     pub size: u64,
 }
@@ -67,8 +61,7 @@ pub struct DataServer {
     handle: axum_server::Handle,
     port: u16,
     sessions: Arc<RwLock<HashMap<String, Arc<Session>>>>,
-    /// Kept so [`DataServer::shutdown`] can wait for in-flight writes rather
-    /// than merely asking them to stop.
+    /// Kept so [`DataServer::shutdown`] can wait for in-flight writes.
     serving: tokio::task::JoinHandle<()>,
 }
 
@@ -102,9 +95,8 @@ impl DataServer {
             .handle(handle.clone())
             .serve(app.into_make_service());
 
-        // Runs until the handle shuts it down. A bind failure surfaces through
-        // `listening()` returning None rather than as an error from this
-        // function, so it is turned back into one below.
+        // Runs until the handle shuts it down. A bind failure surfaces as
+        // `listening()` returning None, turned back into an error below.
         let serving = tokio::spawn(async move {
             if let Err(error) = server.await {
                 tracing::error!(%error, "data plane server stopped");
@@ -146,15 +138,12 @@ impl DataServer {
     /// Stops accepting connections and waits for in-flight requests to finish,
     /// giving up after `grace`.
     ///
-    /// Consumes the server because there is nothing useful to do with one
-    /// afterwards, and because waiting means owning the serving task.
-    ///
-    /// A hard drop mid-write would leave a partial file with no record of how
-    /// far it got, which is precisely the state resume needs to be accurate.
+    /// Consumes the server, since waiting means owning the serving task. A hard
+    /// drop mid-write would leave a partial file with an inaccurate length.
     pub async fn shutdown(self, grace: std::time::Duration) {
         self.handle.graceful_shutdown(Some(grace));
-        // The serving task ends once the last connection does. An error here is
-        // a panic in the server task, which has already been logged.
+        // Ends once the last connection does. An error here is a panic in the
+        // server task, already logged.
         let _ = self.serving.await;
     }
 }
@@ -186,8 +175,7 @@ async fn receive_blob(
     body: Body,
 ) -> Response {
     let Some(session) = state.sessions.read().await.get(&token).cloned() else {
-        // Unknown token: either the control channel never authorised this, or
-        // the exchange is over. Both are "no such thing here".
+        // Unknown token: never authorised, or the exchange is over.
         return StatusCode::NOT_FOUND.into_response();
     };
 
@@ -224,8 +212,7 @@ async fn receive_blob(
             StatusCode::OK.into_response()
         }
         Err(error) => {
-            // Whatever reached the disk stays there and is reported, because
-            // that is exactly where a resume picks up.
+            // Whatever reached the disk stays and is reported, for resume.
             let partial = start + progress.transferred().saturating_sub(start);
             counter.fetch_max(partial, Ordering::AcqRel);
             state.events.send(TransferEvent::Failed {
@@ -256,9 +243,8 @@ async fn write_body_to_disk(
         .open(&file.destination)
         .await?;
 
-    // Claim the full length up front. The allocator gets to place the file in
-    // one run instead of extending it a megabyte at a time, and a receiver low
-    // on space finds out now rather than at 90%.
+    // Claim the full length up front: the allocator places the file in one run,
+    // and a receiver low on space finds out now rather than at 90%.
     if start == 0 {
         handle.set_len(file.size).await?;
     }
@@ -271,8 +257,7 @@ async fn write_body_to_disk(
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
 
-        // A sender that keeps going past the size it declared is either broken
-        // or trying to fill the disk. Neither deserves the rest of the stream.
+        // A sender past the size it declared is broken or filling the disk.
         if start + written + chunk.len() as u64 > file.size {
             anyhow::bail!(
                 "sender exceeded the {} bytes it declared for {}",
@@ -292,8 +277,7 @@ async fn write_body_to_disk(
 
 /// Reads the start offset out of `Content-Range: bytes <start>-<end>/<total>`.
 ///
-/// Absent or unparseable means start at zero — a plain whole-file PUT is a
-/// valid request, not an error.
+/// Absent or unparseable means start at zero; a whole-file PUT is valid.
 fn start_offset(headers: &HeaderMap) -> u64 {
     headers
         .get(axum::http::header::CONTENT_RANGE)

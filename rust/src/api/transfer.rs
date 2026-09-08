@@ -1,8 +1,7 @@
 //! The FFI surface.
 //!
-//! Ten functions and two types. Everything is either instant or spawned, so no
-//! call from Dart ever blocks an isolate: a transfer is started by handle and
-//! reported on the event stream.
+//! Every call is either instant or spawned, so none blocks a Dart isolate: a
+//! transfer is started by handle and reported on the event stream.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -29,14 +28,12 @@ use crate::server::{DataServer, IncomingFile};
 /// A file this device is about to receive.
 ///
 /// `destination` is an absolute path chosen by Dart. The sender's filename
-/// never reaches Rust: `lib/utils/save_path.dart` already sanitises it and
-/// resolves collisions, and re-deciding that here would be a second chance to
-/// get path traversal wrong.
+/// never reaches Rust; `lib/utils/save_path.dart` sanitises it and resolves
+/// collisions.
 pub struct IncomingFileSpec {
     pub destination: String,
     /// Signed because flutter_rust_bridge maps `u64` to Dart's `BigInt` and
-    /// `i64` to its plain `int`. A file large enough to overflow this does not
-    /// exist. Negative means the caller has a bug and is refused.
+    /// `i64` to its plain `int`. Negative is refused.
     pub size: i64,
 }
 
@@ -46,16 +43,10 @@ pub struct OutgoingFileSpec {
     pub source: String,
 
     /// A descriptor the platform layer already opened, when the file has no
-    /// path this process could use.
+    /// path this process could use — on Android, a `content://` URI.
     ///
-    /// The one caller is Android, where anything picked from the gallery, a
-    /// documents provider or a share intent is a `content://` URI: a handle
-    /// into another app's provider that only the framework can resolve. Dart
-    /// asks Kotlin to open it and detach the descriptor, and it arrives here.
-    ///
-    /// **Ownership passes with it.** Nothing on the Dart or Kotlin side will
-    /// close it; adopting it into an `OwnedFd` below is what guarantees it is
-    /// closed exactly once, whatever the transfer goes on to do.
+    /// **Ownership passes with it.** Nothing on the Dart or Kotlin side closes
+    /// it; adopting it into an `OwnedFd` below closes it exactly once.
     pub fd: Option<i32>,
 
     /// See [`IncomingFileSpec::size`].
@@ -64,12 +55,10 @@ pub struct OutgoingFileSpec {
 
 /// What happened, for both directions.
 ///
-/// Flat rather than a variant-carrying enum on purpose: that shape would make
-/// flutter_rust_bridge generate a freezed union, which means adding `freezed`
-/// and a second build_runner pass to an app that already runs one for
-/// dart_mappable. The boundary type stays dumb and `lib/transfer/data_plane.dart`
-/// turns it into a real sealed class on arrival — Dart 3 needs no codegen for
-/// that.
+/// Flat rather than variant-carrying: that shape would make
+/// flutter_rust_bridge generate a freezed union, and a second build_runner
+/// pass. `lib/transfer/data_plane.dart` turns it into a sealed class on
+/// arrival.
 pub enum DataPlaneEventKind {
     Progress,
     FileFinished,
@@ -77,17 +66,14 @@ pub enum DataPlaneEventKind {
     Cancelled,
 }
 
-/// `sending` says which half of a transfer this came from: true for a send this
-/// device started, false for a file arriving. A device doing both at once, or a
-/// test running both ends in one process, sees them on the same stream and
-/// cannot otherwise tell them apart.
+/// `sending` says which half of a transfer this came from: true for a send
+/// this device started, false for a file arriving. Both halves share the
+/// stream.
 ///
-/// `session` is the token the control channel issued, so Dart can attribute an
-/// event without keeping its own map of task ids.
-///
-/// `transferred` carries the byte count in every case, including the partial
-/// length after a failure or a cancellation — which is exactly where a resume
-/// would pick up. `message` is empty except on [`DataPlaneEventKind::Failed`].
+/// `session` is the token the control channel issued. `transferred` carries
+/// the byte count in every case, including the partial length after a failure
+/// or cancellation. `message` is empty except on
+/// [`DataPlaneEventKind::Failed`].
 pub struct DataPlaneEvent {
     pub kind: DataPlaneEventKind,
     pub sending: bool,
@@ -162,9 +148,9 @@ impl From<(Direction, TransferEvent)> for DataPlaneEvent {
 
 /// One runtime for the life of the process.
 ///
-/// Owned here rather than left to flutter_rust_bridge's executor because axum
-/// and reqwest need tokio's io and time drivers specifically, and because a
-/// server has to outlive the call that started it.
+/// Owned here rather than left to flutter_rust_bridge's executor: axum and
+/// reqwest need tokio's io and time drivers, and the server has to outlive the
+/// call that started it.
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 static SERVER: Mutex<Option<DataServer>> = Mutex::new(None);
 static EVENTS: OnceLock<EventSink> = OnceLock::new();
@@ -176,9 +162,8 @@ static NEXT_TASK: AtomicI64 = AtomicI64::new(1);
 fn runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
-            // Two threads is enough to overlap a socket with a disk write,
-            // which is all a transfer needs. A thread per core would mostly buy
-            // idle stacks on a phone.
+            // Two threads overlap a socket with a disk write, which is all a
+            // transfer needs.
             .worker_threads(2)
             .enable_all()
             .thread_name("jett-data")
@@ -208,8 +193,7 @@ fn tasks() -> &'static Mutex<HashMap<i64, CancellationToken>> {
 
 /// Prepares the runtime. Safe to call more than once.
 ///
-/// Called from `main()` before the first frame so that the first transfer does
-/// not pay for thread creation.
+/// Called from `main()` so the first transfer does not pay for thread creation.
 #[frb(sync)]
 pub fn init_data_plane() {
     let _ = runtime();
@@ -218,13 +202,12 @@ pub fn init_data_plane() {
 
 /// The single event stream, consumed once at startup.
 ///
-/// Progress is already throttled on the Rust side, so this delivers roughly ten
-/// events per second per active file rather than one per chunk.
+/// Progress is throttled here to roughly ten events per second per active file.
 pub fn data_plane_events(sink: StreamSink<DataPlaneEvent>) {
     let receiver = PENDING_EVENTS.lock().unwrap().take();
     let Some(mut receiver) = receiver else {
-        // Already consumed. Dropping the sink closes the duplicate stream
-        // rather than silently competing with the live one for events.
+        // Already consumed; dropping the sink closes the duplicate stream
+        // rather than competing with the live one.
         return;
     };
 
@@ -264,8 +247,7 @@ pub fn start_server(
 /// Authorises a session, after the control channel has verified the peer and
 /// the user has accepted the files.
 ///
-/// Until this is called, a `PUT` carrying the token is answered with 404 — the
-/// token is a receipt for a decision made elsewhere, not a credential in itself.
+/// Until this is called, a `PUT` carrying the token is answered with 404.
 pub fn open_session(token: String, files: Vec<IncomingFileSpec>) -> Result<(), String> {
     let files = files
         .into_iter()
@@ -294,10 +276,8 @@ pub fn close_session(token: String) -> Result<(), String> {
     })
 }
 
-/// Stops listening, letting in-flight writes finish first.
-///
-/// A hard stop mid-write would leave a partial file with no accurate record of
-/// how far it got, which is the one thing resume depends on.
+/// Stops listening, letting in-flight writes finish first so a partial file
+/// keeps an accurate length for resume.
 pub fn stop_server(grace_millis: u32) -> Result<(), String> {
     let server = SERVER.lock().unwrap().take();
     if let Some(server) = server {
@@ -318,9 +298,8 @@ fn with_server<T>(f: impl FnOnce(&DataServer) -> Result<T, String>) -> Result<T,
 
 /// Begins a send and returns immediately with a handle for [`cancel_send`].
 ///
-/// Outcomes arrive on the event stream. Returning a handle rather than a future
-/// keeps the call off the isolate for the whole transfer, which for a large file
-/// is the difference between a responsive UI and a frozen one.
+/// Outcomes arrive on the event stream; the handle keeps the call off the
+/// isolate for the whole transfer.
 #[frb(sync)]
 pub fn start_send(
     base_url: String,
@@ -332,26 +311,22 @@ pub fn start_send(
     let cancel = CancellationToken::new();
     tasks().lock().unwrap().insert(task_id, cancel.clone());
 
-    // Descriptors are adopted here, before anything can fail, so that from this
-    // line on every one of them has an owner that closes it. Deferring this to
-    // the point of use would leave the ones belonging to later files unowned if
-    // an earlier file failed.
+    // Adopted before anything can fail, so every descriptor has an owner that
+    // closes it even if a later file errors.
     let files: Vec<OutgoingFile> = files
         .into_iter()
         .map(|file| OutgoingFile {
             source: match file.fd {
                 #[cfg(unix)]
                 Some(fd) => {
-                    // SAFETY: the descriptor was detached by the platform layer
-                    // specifically to hand it over — see `openFileDescriptor`
-                    // in `pigeons/input.dart` — so nothing else owns or will
-                    // close it, which is what `from_raw_fd` requires.
+                    // SAFETY: the platform layer detached this descriptor to hand
+                    // it over (see `openFileDescriptor` in `pigeons/input.dart`),
+                    // so nothing else owns or will close it.
                     FileSource::Descriptor(unsafe {
                         std::os::fd::OwnedFd::from_raw_fd(fd)
                     })
                 }
-                // On a non-Unix target there is no descriptor to adopt, and
-                // Dart never sends one there; the path is the only source.
+                // No descriptor to adopt off Unix; the path is the only source.
                 _ => FileSource::Path(PathBuf::from(file.source)),
             },
             size: file.size.max(0) as u64,
@@ -360,8 +335,7 @@ pub fn start_send(
     let sink = events().for_direction(Direction::Sending);
 
     runtime().spawn(async move {
-        // Failures are already reported as events by `send_files`; the returned
-        // error would only be a duplicate with nowhere to go.
+        // `send_files` already reports failures as events.
         let _ = send_files(
             &base_url,
             &token,
@@ -379,12 +353,8 @@ pub fn start_send(
 
 /// Closes a descriptor that was opened for a send which then did not happen.
 ///
-/// [`start_send`] adopts every descriptor it is given, so once a send starts
-/// there is nothing here to do. The gap is the send that never starts — this
-/// build refusing it, or the caller giving up between opening the file and
-/// asking — where the descriptor would otherwise stay open for the life of the
-/// process. Dart has no way to close a raw descriptor itself, and this crate
-/// already owns the question, so it answers it here.
+/// [`start_send`] adopts every descriptor it is given, so this covers only the
+/// send that never starts, which Dart cannot close itself.
 ///
 /// Closing a descriptor that was never open, or one already closed, is ignored.
 #[frb(sync)]
@@ -394,9 +364,8 @@ pub fn close_descriptor(fd: i32) {
         if fd < 0 {
             return;
         }
-        // SAFETY: the caller is handing back a descriptor it owns and is giving
-        // up — the same transfer of ownership `start_send` relies on. Dropping
-        // the `OwnedFd` closes it exactly once.
+        // SAFETY: the caller owns this descriptor and is giving it up, the same
+        // transfer `start_send` relies on. The `OwnedFd` closes it once.
         drop(unsafe { std::os::fd::OwnedFd::from_raw_fd(fd) });
     }
     #[cfg(not(unix))]
@@ -414,9 +383,8 @@ pub fn cancel_send(task_id: i64) {
     }
 }
 
-/// The fingerprint of a certificate, for the rare case Dart wants Rust's
-/// reading of a peer rather than its own. Exposed mainly so the two can be
-/// compared in a test on a real device.
+/// The fingerprint of a certificate, so Rust's reading of a peer can be
+/// compared against Dart's in a test.
 #[frb(sync)]
 pub fn fingerprint_of_certificate(certificate_der: Vec<u8>) -> Result<String, String> {
     crate::fingerprint::fingerprint_of_der(&certificate_der).map_err(|e| e.to_string())

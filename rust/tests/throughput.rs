@@ -1,12 +1,8 @@
-//! What the data plane actually moves, end to end.
+//! What the data plane actually moves, end to end: TLS handshake, HTTP
+//! framing, socket, and a real write to a real file. Comparable to
+//! `layerbench.dart`.
 //!
-//! Deliberately the *whole* path — TLS handshake, HTTP framing, socket, and a
-//! real write to a real file — because that is what Jett does and the
-//! interesting number is not how fast a buffer can be memcpy'd. Comparable to
-//! `layerbench.dart`, which measures Dart's raw TCP and raw TLS ceilings.
-//!
-//! Ignored by default: it is a measurement, not an assertion, and loopback
-//! numbers on a busy CI box mean nothing. Run it deliberately:
+//! Ignored by default; it is a measurement, not an assertion. Run it with:
 //!
 //!   cargo test --release --test throughput -- --ignored --nocapture
 
@@ -35,8 +31,8 @@ async fn measures_end_to_end_throughput() {
     let source = source_dir.path().join("payload.bin");
     let destination = destination_dir.path().join("payload.bin");
 
-    // Written once, outside the timed section, and large enough that it does
-    // not simply sit in the page cache on a small machine.
+    // Written once outside the timed section, and large enough not to sit in
+    // the page cache.
     tokio::fs::write(&source, vec![0x5Au8; PAYLOAD_BYTES])
         .await
         .unwrap();

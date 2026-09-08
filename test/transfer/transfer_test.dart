@@ -30,10 +30,8 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// The transfer path end to end, over real TLS sockets.
 ///
-/// One file rather than several because the server binds a fixed port and
-/// `flutter test` runs separate files concurrently — two of these racing for
-/// [kTcpPort] would fail for reasons that have nothing to do with the code
-/// under test.
+/// One file rather than several: `flutter test` runs files concurrently, and
+/// the server binds the fixed [kTcpPort].
 
 /// Points `getSavePath()` at a directory the test owns.
 class _FakeDownloads extends PathProviderPlatform
@@ -52,8 +50,8 @@ void main() {
 
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
-    // The test binding swaps in a mock HttpClient that answers every request
-    // itself. These tests want real sockets against a real server.
+    // The test binding's mock HttpClient answers every request itself; these
+    // tests want real sockets.
     HttpOverrides.global = null;
     // getSavePath() branches on the platform; the desktop branch is the one
     // that asks for a downloads directory, which is what the fake provides.
@@ -211,8 +209,7 @@ void main() {
         ).toJson(),
       );
 
-      // Refused outright, and without ever asking the user: a build that can
-      // only do multipart has nothing this one can carry bytes over.
+      // Refused outright, without ever asking the user.
       expect(
         await answer,
         isA<DeclinedFrame>().having(
@@ -274,16 +271,13 @@ void main() {
     });
 
     test('refuses a sender that exceeds the size it offered', () async {
-      // Offers 1 KB, sends 64 KB. The multipart path could not tell, because
-      // a part carries no length of its own.
+      // Offers 1 KB, sends 64 KB.
       final (_, _, client) = await accepted('s-liar', [
         const OfferedFile(name: 'liar.bin', size: 1024),
       ]);
 
-      // The receiver stops reading the moment the sender passes what it
-      // offered, so the sender either reads a 500 or has its own write fail
-      // against a connection that is already closing. Both mean refused;
-      // which one arrives is a race, and cutting the sender off is the point.
+      // The receiver stops reading at the offered size, so the sender either
+      // reads a 500 or fails its own write. Both mean refused.
       int? status;
       try {
         status = (await putBlob(
@@ -357,8 +351,7 @@ void main() {
     });
 
     test('keeps a sender-chosen name inside the download directory', () async {
-      // The name now comes from the offer rather than from the request, but it
-      // is still the sender's to choose, so it still has to be defanged.
+      // Still the sender's to choose, so it still has to be defanged.
       final bytes = payload(64);
       final (_, frames, client) = await accepted('s-escape', [
         OfferedFile(name: '../../escaped.bin', size: bytes.length),
@@ -460,8 +453,7 @@ void main() {
       setUp(() async {
         reached = Completer<String>();
 
-        // Stands in for a build that predates the raw-body path: it accepts,
-        // but says so with dataPlaneVersion 1.
+        // A build predating the raw-body path: accepts with dataPlaneVersion 1.
         final router = Router()
           ..get('/ws', (Request request) {
             return webSocketHandler((WebSocketChannel socket, _) {
@@ -482,8 +474,7 @@ void main() {
             String _,
             String _,
           ) {
-            // Reaching this means the sender sent v2 bytes to a receiver that
-            // asked for a path this build no longer speaks.
+            // Reaching this means the sender sent v2 bytes to a v1 receiver.
             if (!reached.isCompleted) reached.complete('RAW-BODY');
             return Response.ok('');
           });
@@ -530,12 +521,9 @@ void main() {
       });
     });
 
-    // Last, and deliberately so. Everything above runs with the native data
-    // plane uninitialised, so `available` is false, no data port is offered,
-    // and the Dart handlers carry the bytes — which is what a build with no
-    // working native library does. Only here is it switched on. Groups run in
-    // order, so both paths are covered without a seam in the production code
-    // to turn one off.
+    // Last, deliberately: everything above runs with the native data plane
+    // uninitialised, so the Dart handlers carry the bytes. Groups run in
+    // order, so both paths are covered without a seam in the app code.
     group(
       'with the native data plane',
       () {

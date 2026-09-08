@@ -1,17 +1,14 @@
 //! What the Rust side tells Dart while bytes are moving.
 //!
-//! One channel for both directions. The UI draws sends and receives with the
-//! same widgets, and giving them separate event types would only push the
-//! merge into Dart.
+//! One channel for both directions, since the UI draws them with the same
+//! widgets.
 
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Which half of a transfer an event came from.
 ///
-/// The session token alone cannot tell them apart: a device that is sending and
-/// receiving at once sees both on one stream, and in a test where both ends run
-/// in one process every event arrives twice. Stamping the direction at the
-/// point it is emitted is the only place that knows.
+/// The session token alone cannot tell them apart, since both halves share one
+/// stream. Stamped where the event is emitted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Sending,
@@ -33,7 +30,7 @@ pub enum TransferEvent {
         index: u32,
     },
     /// The transfer stopped and will not resume on its own. `partial` is what
-    /// survived on disk, which is what a later resume would start from.
+    /// survived on disk, where a later resume starts.
     Failed {
         session: String,
         index: u32,
@@ -47,8 +44,8 @@ pub enum TransferEvent {
     },
 }
 
-/// Where events go. Cloneable, and dropping every clone simply stops delivery —
-/// a transfer must not fail because nothing is listening to its progress.
+/// Where events go. Cloneable; dropping every clone stops delivery rather than
+/// failing the transfer.
 #[derive(Clone)]
 pub struct EventSink {
     sender: Option<UnboundedSender<(Direction, TransferEvent)>>,
@@ -71,8 +68,7 @@ impl EventSink {
         }
     }
 
-    /// For tests and for callers that genuinely want the bytes moved and
-    /// nothing reported.
+    /// For callers that want the bytes moved and nothing reported.
     pub fn silent() -> Self {
         Self {
             sender: None,
@@ -82,8 +78,7 @@ impl EventSink {
 
     pub fn send(&self, event: TransferEvent) {
         if let Some(sender) = &self.sender {
-            // A closed receiver means Dart went away; the transfer carries on
-            // and will finish or fail on its own terms.
+            // A closed receiver means Dart went away; the transfer carries on.
             let _ = sender.send((self.direction, event));
         }
     }
@@ -92,9 +87,7 @@ impl EventSink {
 /// Emits progress no more than once per [`PROGRESS_INTERVAL`], plus a final
 /// exact reading.
 ///
-/// Rate limiting here rather than in Dart on purpose: the point is to not pay
-/// for the FFI crossing at all, and a filter on the far side would already
-/// have paid it.
+/// Rate limited here rather than in Dart so the FFI crossing is never paid.
 pub struct ProgressThrottle {
     sink: EventSink,
     session: String,
@@ -113,7 +106,7 @@ impl ProgressThrottle {
             total,
             transferred: resumed_at,
             // Set back far enough that the first chunk emits immediately, so a
-            // resumed transfer shows its true starting point straight away.
+            // resumed transfer shows its starting point at once.
             last_emit: std::time::Instant::now() - crate::protocol::PROGRESS_INTERVAL,
         }
     }

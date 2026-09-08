@@ -1,10 +1,7 @@
 //! TLS for the data plane, using the identity Dart already minted.
 //!
-//! The key never leaves the app's support directory in a form this crate
-//! chooses: Dart owns `DeviceIdentity`, and hands the PEMs across the FFI
-//! boundary at server start. There is deliberately no keygen here — two
-//! implementations of "what is this device called" is exactly the kind of
-//! divergence that silently breaks every stored trust relationship.
+//! Dart owns `DeviceIdentity` and hands the PEMs across the FFI boundary at
+//! server start. There is deliberately no keygen here.
 
 use std::sync::Arc;
 
@@ -15,11 +12,8 @@ use rustls::{ClientConfig, DigitallySignedStruct, ServerConfig, SignatureScheme}
 
 use crate::fingerprint::{fingerprint_of_der, fingerprints_match};
 
-/// `ring` rather than the newer `aws-lc-rs` default.
-///
-/// Both are sound; `ring` is the one that cross-compiles to the five targets
-/// Jett ships to without dragging cmake and a C toolchain into the Android and
-/// iOS builds. Avoiding that is most of the reason this port is in Rust at all.
+/// `ring` rather than the newer `aws-lc-rs` default, which cross-compiles to
+/// all five targets without cmake and a C toolchain.
 pub fn provider() -> Arc<CryptoProvider> {
     Arc::new(ring::default_provider())
 }
@@ -38,9 +32,8 @@ pub enum TlsError {
 
 /// Server-side TLS from the PEMs Dart stores in `identity/`.
 ///
-/// Accepts SEC1 (`EC PRIVATE KEY`) or PKCS#8 (`PRIVATE KEY`) armour, because
-/// which one comes out of `CryptoUtils.encodeEcPrivateKeyToPem` is a detail of
-/// a package on the other side of the boundary and not worth coupling to.
+/// Accepts SEC1 (`EC PRIVATE KEY`) or PKCS#8 (`PRIVATE KEY`) armour; which one
+/// `CryptoUtils.encodeEcPrivateKeyToPem` produces is not worth coupling to.
 pub fn server_config(certificate_pem: &str, private_key_pem: &str) -> Result<ServerConfig, TlsError> {
     let certificates = rustls_pemfile::certs(&mut certificate_pem.as_bytes())
         .collect::<Result<Vec<_>, _>>()
@@ -54,9 +47,7 @@ pub fn server_config(certificate_pem: &str, private_key_pem: &str) -> Result<Ser
         .ok_or(TlsError::NoPrivateKey)?;
 
     // No client certificates: the sender proves who it is by signing an
-    // attestation on the control channel, and carries the resulting session
-    // token here. Requiring mTLS as well would mean a second, differently
-    // shaped answer to a question already answered.
+    // attestation on the control channel and carries the session token here.
     ServerConfig::builder_with_provider(provider())
         .with_safe_default_protocol_versions()
         .map_err(|e| TlsError::Rejected(e.to_string()))?
@@ -85,15 +76,11 @@ pub fn client_config(expected_fingerprint: &str) -> Result<ClientConfig, TlsErro
 
 /// Verifies the peer by key fingerprint instead of by chain and hostname.
 ///
-/// There is no certificate authority on a local network and no name worth
-/// checking — peers are found by broadcast and addressed by whatever IP the
-/// router handed out this morning. What the user actually confirmed, by
-/// reading verification words aloud, was a *key*. So that is what gets checked
-/// here, and a chain or a hostname would only be theatre.
+/// There is no certificate authority on a local network and no stable name;
+/// what the user confirmed through the verification words was a key.
 ///
-/// This is `dangerous()` in rustls' vocabulary because it replaces the web PKI.
-/// It is not lax: an unpinned peer, or the right peer presenting a different
-/// key, is rejected outright.
+/// `dangerous()` in rustls' vocabulary because it replaces the web PKI. An
+/// unpinned peer, or the right peer presenting a different key, is rejected.
 #[derive(Debug)]
 struct PinnedFingerprint {
     expected: String,
@@ -115,10 +102,8 @@ impl ServerCertVerifier for PinnedFingerprint {
         if fingerprints_match(&presented, &self.expected) {
             Ok(ServerCertVerified::assertion())
         } else {
-            // Deliberately vague to the peer, specific in the log: a device
-            // that answers on the right address with the wrong key is either a
-            // reinstall or an impersonation, and the user needs to re-verify
-            // either way.
+            // Vague to the peer, specific in the log; the user needs to
+            // re-verify whether this is a reinstall or an impersonation.
             Err(rustls::Error::General(format!(
                 "peer key {presented} is not the verified key {}",
                 self.expected
@@ -126,10 +111,8 @@ impl ServerCertVerifier for PinnedFingerprint {
         }
     }
 
-    // Signature checking is still the real thing from the provider — pinning
-    // decides *which* key is acceptable, not whether the handshake has to prove
-    // possession of it. Skipping these would let anyone replay a copied
-    // certificate, which is public.
+    // Still the provider's real signature checking: pinning decides which key is
+    // acceptable, not whether possession has to be proven.
     fn verify_tls12_signature(
         &self,
         message: &[u8],

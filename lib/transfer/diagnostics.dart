@@ -2,11 +2,8 @@ import 'package:flutter/foundation.dart';
 
 /// How a transfer was carried, kept so it can be read on the device.
 ///
-/// The fallback from the native data plane to Dart is deliberately silent — a
-/// device whose native library is missing should still transfer. That silence
-/// makes it impossible to tell, from a speed alone, whether a slow transfer was
-/// slow because the native path was not used or because something else is the
-/// limit. This records which it was.
+/// The fallback from the native data plane to Dart is silent, so a speed alone
+/// does not say which path a slow transfer took. This records it.
 enum Transport {
   /// Bytes went through the Rust data plane.
   native('Native (Rust)'),
@@ -49,11 +46,8 @@ class TransferReport {
   }
 }
 
-/// The last transfer in each direction, for the About screen.
-///
-/// Deliberately not persisted and not part of the transfer state: this is here
-/// to answer "which path did that actually take" while testing on a device, not
-/// to drive anything.
+/// The last transfer in each direction, for the About screen. Not persisted,
+/// not part of the transfer state, and drives nothing.
 class TransferDiagnostics {
   TransferDiagnostics._();
 

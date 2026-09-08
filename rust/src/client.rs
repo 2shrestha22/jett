@@ -23,16 +23,10 @@ pub enum FileSource {
     Path(PathBuf),
 
     /// A descriptor the platform layer already opened, whose ownership has
-    /// passed to this crate.
+    /// passed to this crate. Android only, for `content://` URIs that have no
+    /// path this process could open.
     ///
-    /// Android only. A `content://` URI names a file inside another app's
-    /// provider: it has no path, and only the framework can resolve it. Kotlin
-    /// opens it and detaches the descriptor, which arrives here.
-    ///
-    /// [`OwnedFd`] is what makes that safe. Dropping it closes the descriptor,
-    /// so every exit path releases it without a line of code saying so — an
-    /// error, a cancellation, or a file never reached because an earlier one
-    /// failed.
+    /// Dropping the [`OwnedFd`] closes it, so every exit path releases it.
     ///
     /// [`OwnedFd`]: std::os::fd::OwnedFd
     #[cfg(unix)]
@@ -50,12 +44,8 @@ pub struct OutgoingFile {
 }
 
 impl FileSource {
-    /// Opens the file, consuming the source.
-    ///
-    /// A descriptor becomes a [`std::fs::File`], which owns it from then on and
-    /// closes it when dropped — the same guarantee [`OwnedFd`] was giving.
-    ///
-    /// [`OwnedFd`]: std::os::fd::OwnedFd
+    /// Opens the file, consuming the source. A descriptor becomes a
+    /// [`std::fs::File`], which owns and closes it from then on.
     async fn open(self) -> std::io::Result<tokio::fs::File> {
         match self {
             FileSource::Path(path) => tokio::fs::File::open(path).await,
@@ -64,11 +54,8 @@ impl FileSource {
         }
     }
 
-    /// How to name this file when something goes wrong.
-    ///
-    /// A descriptor has no name — the filename the user picked lives in Dart
-    /// and deliberately never crosses into this crate — so the index of the
-    /// file within the transfer is the most a message here can say.
+    /// How to name this file when something goes wrong. A descriptor has no
+    /// name, so this falls back to the file's index within the transfer.
     fn describe(&self, index: u32) -> String {
         match self {
             FileSource::Path(path) => path.display().to_string(),
@@ -81,11 +68,7 @@ impl FileSource {
 /// Sends every file in `files` to `base_url`, in order, resuming each from
 /// whatever the peer already holds.
 ///
-/// Sequential rather than parallel: these are local-network transfers of large
-/// files, where one stream already saturates the link and several would only
-/// make the progress bars jump around and the disk seek. Parallelism belongs on
-/// *ranges of one file* against a distant server, which is a different problem
-/// from this one.
+/// Sequential: on a local network one stream already saturates the link.
 pub async fn send_files(
     base_url: &str,
     token: &str,
@@ -97,13 +80,13 @@ pub async fn send_files(
     let tls = crate::tls::client_config(peer_fingerprint)?;
     let client = reqwest::Client::builder()
         .use_preconfigured_tls(tls)
-        // Idle sockets to a peer that has gone off the network are worse than
-        // useless — the next transfer would spend its first seconds finding out.
+        // An idle socket to a peer that left the network costs the next
+        // transfer its first seconds.
         .pool_idle_timeout(std::time::Duration::from_secs(15))
         .build()?;
 
-    // By value, so a file the loop never reaches is dropped with everything
-    // else — which for a descriptor is what closes it.
+    // By value, so a file the loop never reaches is dropped, closing its
+    // descriptor.
     for (index, file) in files.into_iter().enumerate() {
         if cancel.is_cancelled() {
             events.send(TransferEvent::Cancelled {
@@ -142,8 +125,8 @@ async fn send_one(
 
     let resume_from = already_received(client, &url).await.min(file.size);
     if resume_from == file.size {
-        // Nothing left to send. Still report completion, or a resumed transfer
-        // of an already-finished file would look stuck.
+        // Nothing left to send, but still report completion or a resumed
+        // already-finished file looks stuck.
         events.send(TransferEvent::FileFinished {
             session: token.to_string(),
             index,
@@ -153,9 +136,8 @@ async fn send_one(
 
     let name = file.source.describe(index);
     let mut handle = file.source.open().await?;
-    // Only a resume seeks. A provider may hand back a pipe, which cannot seek
-    // and cannot rewind — so a fresh send still works over one, and only a
-    // resumed transfer fails, with the error saying which file.
+    // Only a resume seeks, so a fresh send still works over a provider's
+    // pipe; a resumed one fails with the error naming the file.
     if resume_from > 0 {
         handle
             .seek(std::io::SeekFrom::Start(resume_from))
@@ -186,8 +168,7 @@ async fn send_one(
         .body(body);
 
     let outcome = tokio::select! {
-        // Biased so that a cancel racing with completion is read as a cancel;
-        // the alternative reports success for a transfer the user stopped.
+        // Biased so a cancel racing with completion is read as a cancel.
         biased;
         _ = cancel.cancelled() => {
             events.send(TransferEvent::Cancelled {
@@ -241,9 +222,8 @@ async fn send_one(
 /// Wraps the file in a body that counts bytes on their way past and stops if
 /// the transfer is cancelled.
 ///
-/// Ending the stream early truncates the request, which the peer sees as a
-/// short body and treats as a partial transfer — exactly the state resume
-/// expects to find.
+/// Ending early truncates the request, which the peer treats as a partial
+/// transfer for resume to pick up.
 fn counting_body(
     file: tokio::fs::File,
     progress: ProgressThrottle,
@@ -252,8 +232,8 @@ fn counting_body(
 ) -> reqwest::Body {
     let reader = ReaderStream::with_capacity(file, READ_BUFFER_BYTES);
 
-    // The throttle rides in the unfold's state rather than the closure: the
-    // closure is `FnMut` and would have to give it up on the first call.
+    // The throttle rides in the unfold's state because the closure is
+    // `FnMut` and would have to give it up on the first call.
     let stream = futures_util::stream::unfold(
         (reader, cancel, progress, sent),
         move |(mut reader, cancel, mut progress, sent)| async move {

@@ -4,28 +4,20 @@ import 'dart:typed_data';
 import 'package:basic_utils/basic_utils.dart';
 import 'package:crypto/crypto.dart';
 
-/// Deterministic ECDSA, per RFC 6979.
-///
-/// The nonce is derived from the key and the message rather than drawn from a
-/// random source, so a signature can never be weakened by a poor generator —
-/// the failure that has historically leaked ECDSA private keys outright.
+/// Deterministic ECDSA, per RFC 6979. The nonce comes from the key and the
+/// message rather than a random source.
 const _signingAlgorithm = 'SHA-256/DET-ECDSA';
 
 const _curve = 'prime256v1';
 const _validityDays = 3650;
 
-/// Certificates larger than this are refused before being parsed.
-///
-/// A peer's certificate reaches the ASN.1 decoder before anything about that
-/// peer is known, so the work done on a stranger's behalf is worth bounding.
-/// A P-256 certificate is a few hundred bytes.
+/// Certificates larger than this are refused before being parsed, bounding the
+/// work done for an unknown peer. A P-256 certificate is a few hundred bytes.
 const maxCertificatePemBytes = 8 * 1024;
 
 /// A device's long-lived identity: a keypair, a certificate carrying it, and
-/// the fingerprint peers know it by.
-///
-/// Holds no global state and touches no storage, so it can be created freely
-/// in tests.
+/// the fingerprint peers know it by. Holds no global state and touches no
+/// storage.
 class DeviceKeys {
   final String certificatePem;
   final String privateKeyPem;
@@ -42,10 +34,8 @@ class DeviceKeys {
     // ignore: prefer_initializing_formals
   }) : _privateKey = privateKey;
 
-  /// Mints a fresh identity.
-  ///
-  /// P-256 rather than RSA: this runs in the foreground the first time the app
-  /// starts, and an RSA keygen can stall that for seconds.
+  /// Mints a fresh identity. P-256 rather than RSA, which runs in the
+  /// foreground on first launch and can stall it for seconds.
   factory DeviceKeys.generate() {
     final pair = CryptoUtils.generateEcKeyPair(curve: _curve);
     final privateKey = pair.privateKey as ECPrivateKey;
@@ -98,13 +88,9 @@ class DeviceKeys {
 /// The fingerprint of the public key carried by [certificatePem], lowercase
 /// hex, or null if it cannot be read.
 ///
-/// Over the key, not the whole certificate. Two reasons. A certificate can be
-/// reissued for the same key — they expire — and hashing the certificate would
-/// throw away every trust relationship when that happens. More importantly,
-/// nothing verifies a certificate's self-signature, so hashing the certificate
-/// would let an attacker search for a colliding fingerprint by editing
-/// certificate fields and re-hashing, holding one keypair throughout. Hashing
-/// the key forces a real keygen per attempt instead.
+/// Over the key, not the whole certificate: a certificate can be reissued for
+/// the same key, and since nothing verifies its self-signature, hashing it
+/// would let a collision be ground out by editing fields instead of keygen.
 String? keyFingerprintOfPem(String certificatePem) {
   if (certificatePem.length > maxCertificatePemBytes) return null;
   try {
@@ -126,9 +112,8 @@ String? keyFingerprintOfDer(List<int> der) =>
 /// [certificatePem], returning that key's fingerprint. Null if it does not
 /// hold, or if any part of the input is unusable.
 ///
-/// The certificate alone proves nothing — it is public and anyone may copy it.
-/// The returned fingerprint means something only because the signature shows
-/// the sender holds the matching private key.
+/// The certificate is public and proves nothing on its own; the fingerprint
+/// means something only because the signature shows possession of the key.
 String? verifiedSignerFingerprint({
   required String certificatePem,
   required String signature,

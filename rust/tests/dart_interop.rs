@@ -1,10 +1,8 @@
 //! Agreement with the Dart side, checked against a fixture Dart itself minted.
 //!
-//! The fixture was produced by Jett's own `DeviceKeys.generate()` (see
-//! `tool/gen_fixture.dart`) and is committed alongside the expected
-//! fingerprint. Both languages assert against that one file, so a change to
-//! either implementation that would silently invalidate every stored trust
-//! relationship fails a test instead.
+//! Produced by `DeviceKeys.generate()` (see `tool/gen_fixture.dart`) and
+//! committed with its expected fingerprint. Both languages assert against that
+//! one file.
 
 use jett_core::client::{send_files, FileSource, OutgoingFile};
 use jett_core::events::EventSink;
@@ -35,9 +33,8 @@ fn agrees_with_dart_on_the_fingerprint() {
     );
 }
 
-/// Dart writes SEC1 (`EC PRIVATE KEY`) armour, not PKCS#8. rustls has to be
-/// able to serve with it as-is — the alternative is a conversion step on the
-/// Dart side that nothing else needs.
+/// Dart writes SEC1 (`EC PRIVATE KEY`) armour, not PKCS#8, and rustls has to
+/// serve with it as-is.
 #[tokio::test]
 async fn serves_tls_with_the_identity_dart_stored() {
     let destination_dir = tempfile::tempdir().unwrap();
@@ -62,8 +59,7 @@ async fn serves_tls_with_the_identity_dart_stored() {
         )
         .await;
 
-    // Pinned using the fingerprint Dart computed, not one Rust derived — this
-    // is the value that would have come off the trust store.
+    // Pinned using the fingerprint Dart computed, as the trust store would.
     send_files(
         &format!("https://127.0.0.1:{}", server.port()),
         "interop",

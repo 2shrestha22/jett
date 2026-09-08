@@ -1,7 +1,5 @@
 //! End-to-end tests for the data plane: real TLS, real sockets, real files.
-//!
-//! Nothing here is mocked. A transfer that works in these tests is a transfer
-//! that works between two devices, minus discovery.
+//! Nothing here is mocked.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -43,8 +41,8 @@ async fn write_file(path: &PathBuf, bytes: &[u8]) {
     tokio::fs::write(path, bytes).await.unwrap();
 }
 
-/// Deterministic, incompressible-ish payload — a run of zeroes would hide a
-/// bug that writes the right *number* of bytes at the wrong offset.
+/// Deterministic, varying payload; a run of zeroes would hide a write at the
+/// wrong offset.
 fn payload(len: usize) -> Vec<u8> {
     let mut out = Vec::with_capacity(len);
     let mut state: u32 = 0x9E3779B9;
@@ -56,10 +54,8 @@ fn payload(len: usize) -> Vec<u8> {
     out
 }
 
-/// The fingerprint is the SHA-256 of the DER SubjectPublicKeyInfo — the same
-/// bytes `basic_utils` hands Jett's Dart side as
-/// `tbsCertificate.subjectPublicKeyInfo.bytes`. Checked here against the SPKI
-/// rcgen produces independently of any certificate parsing.
+/// The fingerprint is the SHA-256 of the DER SubjectPublicKeyInfo, checked
+/// against the SPKI rcgen produces independently of certificate parsing.
 #[test]
 fn fingerprint_is_sha256_of_the_der_spki() {
     let key = rcgen::KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).unwrap();
@@ -166,8 +162,8 @@ async fn resumes_from_what_the_peer_already_holds() {
     .unwrap();
     let base = format!("https://127.0.0.1:{}", server.port());
 
-    // First attempt, cancelled almost immediately: whatever landed on disk is
-    // what a resume has to build on.
+    // First attempt, cancelled almost immediately; what lands on disk is what
+    // a resume builds on.
     server
         .open_session(
             "first".into(),
@@ -197,8 +193,8 @@ async fn resumes_from_what_the_peer_already_holds() {
     )
     .await;
 
-    // Second attempt against a session that reports the partial length, which
-    // is what the control channel would set up on retry.
+    // Second attempt against a session reporting the partial length, as the
+    // control channel would set up on retry.
     let partial = tokio::fs::metadata(&destination)
         .await
         .map(|m| m.len())
@@ -374,10 +370,8 @@ async fn stops_a_sender_that_exceeds_its_declared_size() {
 
 /// The Android path: a file the sender can only reach through a descriptor.
 ///
-/// On a device this descriptor comes from `ContentResolver.openFileDescriptor`
-/// for a `content://` URI, which has no path. Here it comes from opening a real
-/// file and giving up the path, which exercises the same code — the sender is
-/// handed a raw descriptor and nothing else.
+/// On a device it comes from `ContentResolver.openFileDescriptor`; here from
+/// opening a real file and giving up the path, exercising the same code.
 #[cfg(unix)]
 #[tokio::test]
 async fn transfers_a_file_given_only_a_descriptor() {
@@ -412,12 +406,11 @@ async fn transfers_a_file_given_only_a_descriptor() {
         )
         .await;
 
-    // Ownership is handed over exactly as `detachFd` hands it over on Android:
-    // the descriptor outlives the `File` it came from, and closing it is now
-    // somebody else's job.
+    // Ownership is handed over as `detachFd` does on Android: the descriptor
+    // outlives the `File` it came from.
     let raw = std::fs::File::open(&source).unwrap().into_raw_fd();
-    // SAFETY: `into_raw_fd` gave up ownership just above, so nothing else holds
-    // or will close this descriptor.
+    // SAFETY: `into_raw_fd` gave up ownership above, so nothing else holds or
+    // will close this descriptor.
     let owned = unsafe { OwnedFd::from_raw_fd(raw) };
 
     send_files(
@@ -440,8 +433,7 @@ async fn transfers_a_file_given_only_a_descriptor() {
         "a file sent by descriptor differs from the one on disk"
     );
 
-    // The descriptor the send owned must be closed, not leaked. Reusing the
-    // number would be undefined; asking the OS about it is not.
+    // The descriptor the send owned must be closed, not leaked.
     let still_open = unsafe { libc::fcntl(raw, libc::F_GETFD) } != -1;
     assert!(!still_open, "the descriptor outlived the transfer");
 }

@@ -11,10 +11,8 @@ class Device with DeviceMappable {
   /// Null for a device running a build that predates the control channel.
   final int? protocolVersion;
 
-  /// The device's certificate fingerprint, absent on older builds.
-  ///
-  /// Only a claim until a TLS handshake proves possession of the matching
-  /// private key; good enough to tell devices apart, not to trust them.
+  /// The device's certificate fingerprint, absent on older builds. Only a claim
+  /// until a TLS handshake proves possession of the matching key.
   final String? fingerprint;
 
   const Device({
@@ -24,13 +22,11 @@ class Device with DeviceMappable {
     this.fingerprint,
   });
 
-  /// Stable key for deduplication. The fingerprint survives restarts and
-  /// address changes; the address is only a fallback for builds that publish
-  /// no fingerprint.
+  /// Stable key for deduplication. The address is only a fallback for builds
+  /// that publish no fingerprint.
   String get id => fingerprint ?? ipAddress;
 
-  /// False when this device speaks a protocol we cannot transfer over, which
-  /// means it needs updating before it can be sent to.
+  /// False when this device speaks a protocol we cannot transfer over.
   bool get isSupported => protocolVersion == kProtocolVersion;
 
   @override
