@@ -1,15 +1,21 @@
 PODS:
   - Flutter (1.0.0)
+  - jett_core (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - jett_core (from `.symlinks/plugins/jett_core/ios`)
 
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  jett_core:
+    :path: ".symlinks/plugins/jett_core/ios"
 
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  jett_core: 2075a63c468273bf92adf616ecfdbb971882aa8a
 
 PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
 

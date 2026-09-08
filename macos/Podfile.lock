@@ -1,15 +1,21 @@
 PODS:
   - FlutterMacOS (1.0.0)
+  - jett_core (0.0.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - jett_core (from `Flutter/ephemeral/.symlinks/plugins/jett_core/macos`)
 
 EXTERNAL SOURCES:
   FlutterMacOS:
     :path: Flutter/ephemeral
+  jett_core:
+    :path: Flutter/ephemeral/.symlinks/plugins/jett_core/macos
 
 SPEC CHECKSUMS:
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+  jett_core: c563e39f1e0fe48e7df392d379cad53103464d67
 
 PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 
